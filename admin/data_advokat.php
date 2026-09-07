@@ -10,7 +10,9 @@ $pesan_map = [
 $flash = $pesan_map[$_GET['pesan'] ?? ''] ?? null;
 
 if (($_GET['pesan'] ?? '') === 'import_selesai') {
-    $flash = ['success', 'Import selesai. Sukses: ' . (int) ($_GET['sukses'] ?? 0)
+    $flash = ['success', 'Import selesai. Baru: ' . (int) ($_GET['baru'] ?? $_GET['sukses'] ?? 0)
+        . ', diperbarui: ' . (int) ($_GET['update'] ?? 0)
+        . ', dilewati: ' . (int) ($_GET['lewati'] ?? 0)
         . ', gagal: ' . (int) ($_GET['gagal'] ?? 0) . '.'];
 }
 
@@ -312,7 +314,11 @@ td { padding: 12px; border-top: 1px solid #eee; font-size: 11px; vertical-align:
         <p>Format .csv dengan pemisah titik koma (;). Baris pertama = judul kolom.</p>
         <form method="POST" action="proses_import.php" enctype="multipart/form-data">
             <?= csrf_field() ?>
-            <input type="file" name="file_csv" accept=".csv,text/csv" required class="form-control" style="width:100%;margin-bottom:16px">
+            <input type="file" name="file_csv" accept=".csv,text/csv" required class="form-control" style="width:100%;margin-bottom:12px">
+            <label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;color:#475569;margin-bottom:16px;cursor:pointer;">
+                <input type="checkbox" name="update_existing" value="1" style="margin-top:2px;">
+                <span>Perbarui data untuk NIA yang sudah ada (berguna untuk memperbaiki data lama, mis. jenis kelamin). Tanpa dicentang, NIA yang sudah ada dilewati.</span>
+            </label>
             <div class="modal-foot">
                 <button type="button" class="btn" style="background:#e5e7eb;color:#333" onclick="document.getElementById('modalImport').classList.remove('show')">Batal</button>
                 <button type="submit" name="import" value="1" class="btn"><i class="fa-solid fa-upload"></i> Upload &amp; Proses</button>

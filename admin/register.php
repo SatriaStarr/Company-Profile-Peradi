@@ -1,3 +1,4 @@
+<?php require_once __DIR__ . '/partials/csrf.php'; ?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -156,6 +157,7 @@
     </div>
 
     <form action="proses_register.php" method="POST">
+        <?= csrf_field() ?>
 
         <label>Nama Lengkap</label>
         <input

@@ -80,26 +80,21 @@ if ($login === '' || $password === '') {
 |--------------------------------------------------------------------------
 */
 
-$login_safe = mysqli_real_escape_string(
-    $conn,
-    $login
-);
-
-
 /*
 |--------------------------------------------------------------------------
-| CARI USER
+| CARI USER  (prepared statement)
 |--------------------------------------------------------------------------
 */
 
-$query = mysqli_query(
+$stmt = mysqli_prepare(
     $conn,
-    "SELECT *
-     FROM users
-     WHERE username = '$login_safe'
-        OR email = '$login_safe'
-     LIMIT 1"
+    "SELECT * FROM users WHERE username = ? OR email = ? LIMIT 1"
 );
+mysqli_stmt_bind_param($stmt, 'ss', $login, $login);
+mysqli_stmt_execute($stmt);
+$result = mysqli_stmt_get_result($stmt);
+$data = $result ? mysqli_fetch_assoc($result) : null;
+mysqli_stmt_close($stmt);
 
 
 /*
@@ -108,10 +103,7 @@ $query = mysqli_query(
 |--------------------------------------------------------------------------
 */
 
-if (
-    !$query ||
-    mysqli_num_rows($query) === 0
-) {
+if (!$data) {
 
     header(
         "Location: {$base_url}/admin/login.php?pesan=notfound"
@@ -120,15 +112,6 @@ if (
     exit;
 
 }
-
-
-/*
-|--------------------------------------------------------------------------
-| AMBIL DATA USER
-|--------------------------------------------------------------------------
-*/
-
-$data = mysqli_fetch_assoc($query);
 
 $role = $data['role'] ?? '';
 
@@ -196,21 +179,17 @@ if (
         PASSWORD_DEFAULT
     );
 
-    $new_hash_safe = mysqli_real_escape_string(
-        $conn,
-        $new_hash
-    );
-
     $id = (int) ($data['id_user'] ?? 0);
 
     if ($id > 0) {
 
-        mysqli_query(
+        $up = mysqli_prepare(
             $conn,
-            "UPDATE users
-             SET password = '$new_hash_safe'
-             WHERE id_user = $id"
+            "UPDATE users SET password = ? WHERE id_user = ? LIMIT 1"
         );
+        mysqli_stmt_bind_param($up, 'si', $new_hash, $id);
+        mysqli_stmt_execute($up);
+        mysqli_stmt_close($up);
 
     }
 

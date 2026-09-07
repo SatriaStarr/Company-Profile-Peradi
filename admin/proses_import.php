@@ -23,6 +23,9 @@ if ($ext !== 'csv') {
     exit;
 }
 
+/* Jika dicentang, baris dengan NIA yang sudah ada akan DIPERBARUI, bukan dilewati. */
+$mode_update = !empty($_POST['update_existing']);
+
 $fp = fopen($_FILES['file_csv']['tmp_name'], 'r');
 if (!$fp) {
     header('Location: data_advokat.php?pesan=gagal');
@@ -31,16 +34,33 @@ if (!$fp) {
 
 fgetcsv($fp, 10000, ';'); // lewati header
 
-$berhasil = 0;
+$masuk    = 0;   // baris baru
+$diupdate = 0;   // baris diperbarui
+$dilewati = 0;   // baris dilewati (duplikat, mode skip)
 $gagal    = 0;
 
-$cek = mysqli_prepare($conn, 'SELECT 1 FROM data_advokat WHERE nia = ? LIMIT 1');
+$cek = mysqli_prepare($conn, 'SELECT id_advokat FROM data_advokat WHERE nia = ? LIMIT 1');
 $ins = mysqli_prepare(
     $conn,
     'INSERT INTO data_advokat
      (nia, nama_lengkap, jenis_kelamin, tempat_lahir, tanggal_lahir, agama, no_hp,
       nama_kantor_hukum, alamat_kantor, nik, alamat_domisili, status_keanggotaan)
      VALUES (?,?,?,?,?,?,?,?,?,?,?, "aktif")'
+);
+$upd = mysqli_prepare(
+    $conn,
+    'UPDATE data_advokat SET
+        nama_lengkap = COALESCE(NULLIF(?, ""), nama_lengkap),
+        jenis_kelamin = COALESCE(?, jenis_kelamin),
+        tempat_lahir = COALESCE(NULLIF(?, ""), tempat_lahir),
+        tanggal_lahir = COALESCE(?, tanggal_lahir),
+        agama = COALESCE(NULLIF(?, ""), agama),
+        no_hp = COALESCE(NULLIF(?, ""), no_hp),
+        nama_kantor_hukum = COALESCE(NULLIF(?, ""), nama_kantor_hukum),
+        alamat_kantor = COALESCE(NULLIF(?, ""), alamat_kantor),
+        nik = COALESCE(NULLIF(?, ""), nik),
+        alamat_domisili = COALESCE(NULLIF(?, ""), alamat_domisili)
+     WHERE nia = ? LIMIT 1'
 );
 
 while (($c = fgetcsv($fp, 10000, ';')) !== false) {
@@ -53,13 +73,9 @@ while (($c = fgetcsv($fp, 10000, ';')) !== false) {
         continue;
     }
 
-    // cek duplikat
     mysqli_stmt_bind_param($cek, 's', $nia);
     mysqli_stmt_execute($cek);
-    if (mysqli_fetch_row(mysqli_stmt_get_result($cek))) {
-        $gagal++;
-        continue;
-    }
+    $ada = (bool) mysqli_fetch_row(mysqli_stmt_get_result($cek));
 
     $nama_lengkap  = $g(2);
     $jk_raw        = strtoupper($g(3));
@@ -75,15 +91,33 @@ while (($c = fgetcsv($fp, 10000, ';')) !== false) {
     $nik           = $g(12);
     $alamat_dom    = $g(13);
 
+    if ($ada) {
+        if (!$mode_update) {
+            $dilewati++;
+            continue;
+        }
+        mysqli_stmt_bind_param(
+            $upd,
+            'sssssssssss',
+            $nama_lengkap, $jenis_kelamin, $tempat_lahir, $tanggal_lahir, $agama,
+            $no_hp, $nama_kantor, $alamat_kantor, $nik, $alamat_dom, $nia
+        );
+        if (mysqli_stmt_execute($upd)) {
+            $diupdate++;
+        } else {
+            $gagal++;
+        }
+        continue;
+    }
+
     mysqli_stmt_bind_param(
         $ins,
         'sssssssssss',
         $nia, $nama_lengkap, $jenis_kelamin, $tempat_lahir, $tanggal_lahir, $agama,
         $no_hp, $nama_kantor, $alamat_kantor, $nik, $alamat_dom
     );
-
     if (mysqli_stmt_execute($ins)) {
-        $berhasil++;
+        $masuk++;
     } else {
         $gagal++;
     }
@@ -91,5 +125,11 @@ while (($c = fgetcsv($fp, 10000, ';')) !== false) {
 
 fclose($fp);
 
-header('Location: data_advokat.php?pesan=import_selesai&sukses=' . $berhasil . '&gagal=' . $gagal);
+$sukses = $masuk + $diupdate;
+header('Location: data_advokat.php?pesan=import_selesai'
+    . '&sukses=' . $sukses
+    . '&baru=' . $masuk
+    . '&update=' . $diupdate
+    . '&lewati=' . $dilewati
+    . '&gagal=' . $gagal);
 exit;
