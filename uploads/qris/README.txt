@@ -1,0 +1,1 @@
+Simpan QRIS kantor sebagai qris.png di folder ini. File tidak disertakan karena QRIS harus milik DPC PERADI Pontianak.

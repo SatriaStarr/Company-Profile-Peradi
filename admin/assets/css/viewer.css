@@ -1,0 +1,132 @@
+/* ===== PDF VIEWER MODAL ===== */
+.viewer-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 9999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.viewer-overlay.active {
+    display: flex;
+}
+
+.viewer-container {
+    width: 90%;
+    height: 90%;
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.viewer-header {
+    background: #1e3a8a;
+    color: white;
+    padding: 12px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.viewer-header h3 {
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.viewer-close {
+    cursor: pointer;
+    font-size: 1.2rem;
+}
+
+.viewer-body {
+    flex: 1;
+}
+
+.viewer-body iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+/* Overlay */
+.modal-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    display: none;
+    justify-content: center !important;
+    align-items: center !important;
+    z-index: 99999 !important;
+}
+
+
+/* Box modal */
+.modal-box {
+    background: #fff;
+    padding: 25px 30px;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 380px;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    animation: scaleIn 0.2s ease;
+}
+
+.modal-box h3 {
+    margin-bottom: 10px;
+    font-size: 1.1rem;
+}
+
+.modal-box p {
+    font-size: 0.9rem;
+    color: #555;
+}
+
+/* Action buttons */
+.modal-actions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.btn-delete {
+    background: #dc2626;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.btn-cancel {
+    background: #e5e7eb;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+/* Animasi */
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Responsive (HP) */
+@media (max-width: 768px) {
+    .viewer-container {
+        width: 100%;
+        height: 100%;
+        border-radius: 0;
+    }
+}

@@ -1,0 +1,6 @@
+node_modules/
+vendor/
+*.log
+.env
+config/midtrans_keys.local.php
+user/google_config.local.php
