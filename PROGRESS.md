@@ -25,7 +25,7 @@ Subfolder: galeri, layanan, pembayaran, peraturan, qris, sertifikasi, sertifikat
 ## Status checklist
 
 - [x] 1. Sentralisasi sidebar admin
-- [ ] 2. Rapikan Data User
+- [x] 2. Rapikan Data User
 - [ ] 3. Fitur Pengumuman
 - [ ] 4. Fitur Notifikasi
 - [ ] 5. Audit Data Advokat
@@ -57,3 +57,16 @@ Subfolder: galeri, layanan, pembayaran, peraturan, qris, sertifikasi, sertifikat
 - 11 halaman CMS lama sudah `include partials/sidebar.php` -> otomatis ikut desain baru.
 - `admin/peserta.php` (duplikat rusak: pakai kolom `p.jenis`/`p.created_at` yang tidak ada, link ke `detail_peserta.php` yang tidak ada) -> diganti redirect 301 ke `data_pendaftaran.php`.
 - Uji: semua halaman admin dirender via `php -S`, semua tampil dengan sidebar, tanpa error PHP.
+
+### 2. Rapikan Data User — SELESAI
+- `admin/data_user.php` ditulis ulang:
+  - Pencarian (nama/username/email) pakai prepared statement, auto-submit saat mengetik (debounce 500ms) + tetap bisa Enter.
+  - Filter role auto-submit `onchange` (tanpa tombol Search).
+  - Tombol reset = ikon saja (`btn-icon`).
+  - **Pagination ditambahkan** (10/halaman, mempertahankan keyword+role di link).
+  - Kolom **Status** (active/pending/banned) + aksi: Detail, Edit, Aktifkan (untuk pending), Hapus (super_admin saja).
+  - Hapus dilindungi: tidak bisa hapus diri sendiri, tidak bisa hapus super_admin terakhir, wajib CSRF.
+- Baru `admin/detail_user.php`: profil user + daftar pendaftaran + status pembayaran + notifikasi terakhir.
+- Baru `admin/edit_user.php`: edit nama/username/email + (super_admin) role/status + reset password opsional. Validasi: username unik & format, email valid, tidak menurunkan super_admin terakhir, tidak mengubah role/status diri sendiri. CSRF wajib.
+- Fungsi "Verifikasi Admin" lama (approve user pending) kini tercakup oleh tombol Aktifkan + edit status. `verifikasi_admin.php` & `proses_verifikasi.php` tidak dihapus.
+- Uji fungsional: edit tersimpan, guard hapus-diri-sendiri jalan, POST tanpa CSRF -> 419.
