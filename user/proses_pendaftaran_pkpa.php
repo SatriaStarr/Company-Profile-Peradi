@@ -464,7 +464,7 @@ try {
 
     $jenis = 'PKPA';
 
-    $status = 'menunggu';
+    $status = 'menunggu_verifikasi';
 
 
     $stmt = $conn->prepare("
@@ -516,7 +516,7 @@ try {
             pekerjaan,
             alamat,
             no_hp,
-            foto,
+            foto_calon_advokat,
             foto_ijazah,
             foto_ktp,
             tanda_tangan

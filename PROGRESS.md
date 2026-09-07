@@ -29,7 +29,7 @@ Subfolder: galeri, layanan, pembayaran, peraturan, qris, sertifikasi, sertifikat
 - [x] 3. Fitur Pengumuman
 - [x] 4. Fitur Notifikasi
 - [x] 5. Audit Data Advokat
-- [ ] 6. Audit Detail Pendaftaran
+- [x] 6. Audit Detail Pendaftaran
 - [ ] 7. Perbaiki path upload/file (404)
 - [ ] 8. Keamanan upload file
 - [ ] 9. Keamanan sistem admin & user
@@ -94,3 +94,13 @@ Subfolder: galeri, layanan, pembayaran, peraturan, qris, sertifikasi, sertifikat
 - `proses_import.php`: auth + CSRF + validasi file, prepared statement, **perbaikan bug**: `jenis_kelamin` dulu diisi "Laki-laki"/"Perempuan" ke kolom `enum('L','P')` -> tersimpan `''`. Kini map ke `L`/`P`. `foto_profil` dibiarkan NULL (dulu 'default.jpg' padahal file tidak ada).
 - Uji: tambah/edit/hapus/duplikat-NIA/import CSV/pencarian/pagination + guard CSRF (419) semua OK.
 - **CATATAN DATA LAMA**: 336 baris advokat existing punya `jenis_kelamin=''` akibat bug import lama. Perlu re-import CSV (importer sekarang skip NIA duplikat) atau perbaikan manual — tidak bisa saya tebak datanya.
+
+### 6. Audit Detail Pendaftaran — SELESAI
+- **BUG BESAR diperbaiki (status enum)**: `pendaftaran.status` di DB = `enum('menunggu','diproses','diterima','ditolak','selesai')` TAPI seluruh aplikasi pakai alur 7 status (`menunggu_verifikasi`, `berkas_diperiksa`, `menunggu_pembayaran`, `pembayaran_diperiksa`, `terdaftar`, `selesai`, `ditolak`). Akibat: admin ubah status -> tersimpan `''` -> alur pendaftaran tidak jalan. Solusi: `database/migrasi_2026_09_07_status_pendaftaran.sql` mengubah enum ke 8 nilai (+ alias `menunggu`) & perbaiki baris `''`. Insert di `proses_pendaftaran*.php` diubah `'menunggu'` -> `'menunggu_verifikasi'`. Diuji: ubah status ke `berkas_diperiksa` kini tersimpan benar.
+- **BUG (tabel `berkas` tidak ada)**: `detail_pendaftaran.php` query `FROM berkas` (dijaga tableExists -> selalu kosong). Berkas sebenarnya = kolom di `pendaftaran_pkpa`/`pendaftaran_upa`. Diubah: baca `$peserta` + `$berkas` dari tabel yang benar sesuai jenis.
+- **Data Peserta**: card "Data Peserta" kini menampilkan NIK, TTL, pekerjaan, no HP, alamat dari formulir PKPA/UPA (sebelumnya hanya ID/nama/email/jenis).
+- **BUG path bukti pembayaran (item 7)**: link `../user/uploads/bukti_pembayaran/<basename>` -> diganti helper `fileUrl()` yang menangani path tersimpan (`uploads/pembayaran/x`, `user/uploads/...`, atau nama file saja). Sama untuk link berkas (dulu `../uploads/<file>` -> dobel `uploads/`).
+- **BUG kolom `sertifikat.tanggal_terbit` tidak ada**: kode sudah memakainya (dijaga columnExists). `database/migrasi_2026_09_07_sertifikat_tanggal_terbit.sql` menambah kolom `DATE NULL`.
+- **BUG kolom `pendaftaran_pkpa.foto`**: `proses_pendaftaran_pkpa.php` insert ke kolom `foto` (tidak ada) -> diperbaiki ke `foto_calon_advokat`. (INSERT `pendaftaran_upa` masih tidak sinkron dengan skema — ditangani di item 10.)
+- Uji: detail render id 1 & 2, ubah status jalan.
+- **SISA untuk item 9**: form POST di `detail_pendaftaran.php` belum pakai CSRF.

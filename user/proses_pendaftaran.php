@@ -108,7 +108,7 @@ try {
     // tanggal_daftar otomatis current_timestamp()
     // =================================================
 
-    $status = 'menunggu';
+    $status = 'menunggu_verifikasi';
 
     $stmt = $conn->prepare("
         INSERT INTO pendaftaran

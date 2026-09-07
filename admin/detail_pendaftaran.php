@@ -1803,66 +1803,53 @@ if (
 
 /*
 |--------------------------------------------------------------------------
-| DATA BERKAS
+| DATA PESERTA (FORMULIR PKPA / UPA) + BERKAS
 |--------------------------------------------------------------------------
+| Tidak ada tabel `berkas`. Data peserta & berkas ada di
+| pendaftaran_pkpa / pendaftaran_upa (sesuai jenis pendaftaran).
 */
 
-$berkas = [];
+$peserta = null;      // baris pendaftaran_pkpa / pendaftaran_upa
+$berkas  = [];        // [ ['nama'=>..., 'file'=>path relatif root], ... ]
 
+$jenis_upper = strtoupper((string) $jenis);
+$peserta_table = $jenis_upper === 'UPA' ? 'pendaftaran_upa'
+    : ($jenis_upper === 'PKPA' ? 'pendaftaran_pkpa' : '');
 
-if (
-    tableExists(
+if ($peserta_table !== '' && tableExists($conn, $peserta_table)) {
+
+    $stmt = mysqli_prepare(
         $conn,
-        'berkas'
-    )
-) {
-
-    $stmt =
-        mysqli_prepare(
-            $conn,
-            "SELECT *
-             FROM berkas
-             WHERE id_pendaftaran = ?
-             ORDER BY id_pendaftaran DESC"
-        );
-
-
+        "SELECT * FROM `$peserta_table` WHERE id_pendaftaran = ? ORDER BY id_pendaftaran DESC LIMIT 1"
+    );
     if ($stmt) {
+        mysqli_stmt_bind_param($stmt, 'i', $id_pendaftaran);
+        mysqli_stmt_execute($stmt);
+        $res = mysqli_stmt_get_result($stmt);
+        $peserta = $res ? mysqli_fetch_assoc($res) : null;
+        mysqli_stmt_close($stmt);
+    }
 
-        mysqli_stmt_bind_param(
-            $stmt,
-            "i",
-            $id_pendaftaran
-        );
+    if ($peserta) {
+        // peta kolom file -> label yang ramah
+        $berkas_map = $jenis_upper === 'UPA'
+            ? [
+                'foto_ktp'      => 'Foto KTP',
+                'tanda_tangan'  => 'Tanda Tangan',
+              ]
+            : [
+                'foto_calon_advokat' => 'Pas Foto',
+                'foto_ijazah'        => 'Foto Ijazah',
+                'foto_ktp'           => 'Foto KTP',
+                'tanda_tangan'       => 'Tanda Tangan',
+              ];
 
-        mysqli_stmt_execute(
-            $stmt
-        );
-
-        $result =
-            mysqli_stmt_get_result(
-                $stmt
-            );
-
-
-        if ($result) {
-
-            while (
-                $row =
-                mysqli_fetch_assoc(
-                    $result
-                )
-            ) {
-
-                $berkas[] =
-                    $row;
+        foreach ($berkas_map as $col => $label) {
+            $val = trim((string) ($peserta[$col] ?? ''));
+            if ($val !== '') {
+                $berkas[] = ['nama' => $label, 'file' => $val, 'status' => 'Terkirim'];
             }
         }
-
-
-        mysqli_stmt_close(
-            $stmt
-        );
     }
 }
 
@@ -2046,6 +2033,35 @@ function getBerkasStatus($row)
     return
         $row['status']
         ?? 'Belum Diperiksa';
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Ubah path file tersimpan -> URL yang benar dari halaman /admin
+|--------------------------------------------------------------------------
+| Menangani nilai lama:
+|   "uploads/foto/x.jpg"          -> ../uploads/foto/x.jpg
+|   "/uploads/foto/x.jpg"         -> ../uploads/foto/x.jpg
+|   "user/uploads/pembayaran/x"   -> ../user/uploads/pembayaran/x
+|   "x.jpg" (hanya nama file)     -> ../uploads/<fallback>/x.jpg
+*/
+function fileUrl(?string $stored, string $fallbackDir = ''): string
+{
+    $s = trim(str_replace('\\', '/', (string) $stored));
+    if ($s === '') {
+        return '';
+    }
+    $s = ltrim($s, '/');
+    if (str_starts_with($s, 'uploads/') || str_starts_with($s, 'user/uploads/')) {
+        return '../' . $s;
+    }
+    if (str_contains($s, '/')) {
+        return '../uploads/' . $s;
+    }
+    return $fallbackDir !== ''
+        ? '../uploads/' . trim($fallbackDir, '/') . '/' . $s
+        : '../uploads/' . $s;
 }
 
 
@@ -3526,6 +3542,31 @@ td {
 
         </div>
 
+        <?php
+        // Data dari formulir PKPA / UPA (bila peserta sudah mengisi detail)
+        $peserta_fields = [
+            'nama_lengkap'  => 'Nama pada Formulir',
+            'nik'           => 'NIK',
+            'tempat_lahir'  => 'Tempat Lahir',
+            'tanggal_lahir' => 'Tanggal Lahir',
+            'pekerjaan'     => 'Pekerjaan',
+            'no_hp'         => 'No. HP',
+            'alamat'        => 'Alamat',
+        ];
+        if ($peserta):
+            foreach ($peserta_fields as $pf => $plabel):
+                if (!array_key_exists($pf, $peserta) || trim((string) $peserta[$pf]) === '') {
+                    continue;
+                }
+        ?>
+        <div class="data-item">
+            <div class="data-label"><?= e($plabel) ?></div>
+            <div class="data-value"><?= e($peserta[$pf]) ?></div>
+        </div>
+        <?php
+            endforeach;
+        endif;
+        ?>
 
     </div>
 
@@ -3872,13 +3913,7 @@ td {
                     <div class="payment-value">
 
                         <a
-                            href="../user/uploads/bukti_pembayaran/<?= e(
-                                basename(
-                                    $pembayaran[
-                                        'bukti_pembayaran'
-                                    ]
-                                )
-                            ); ?>"
+                            href="<?= e(fileUrl($pembayaran['bukti_pembayaran'], 'pembayaran')); ?>"
                             target="_blank"
                             class="btn btn-small"
                         >
@@ -4023,12 +4058,7 @@ td {
                     ): ?>
 
                         <a
-                            href="../uploads/<?= e(
-                                ltrim(
-                                    $file_berkas,
-                                    '/'
-                                )
-                            ); ?>"
+                            href="<?= e(fileUrl($file_berkas)); ?>"
                             target="_blank"
                             class="btn btn-small"
                         >

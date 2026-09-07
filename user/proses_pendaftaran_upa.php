@@ -565,7 +565,7 @@ try {
         'UPA';
 
     $status =
-        'menunggu';
+        'menunggu_verifikasi';
 
 
     $stmt =
