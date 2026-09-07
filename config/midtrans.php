@@ -126,9 +126,20 @@ function midtrans_create_transaction(array $params): array
 function midtrans_get_status(string $orderId): array
 {
     [$code, $json, $raw] = midtrans_request('GET', midtrans_base_api() . '/' . rawurlencode($orderId) . '/status');
+
     if (!$json) {
         throw new RuntimeException('Respons status Midtrans tidak valid (HTTP ' . $code . ').');
     }
+
+    // Midtrans membungkus error (401/404/dll) dalam JSON dengan status_code >= 400
+    // dan TANPA order_id. Perlakukan sebagai error agar pemanggil bisa fallback.
+    $sc = (int) ($json['status_code'] ?? $code);
+    if ($sc >= 400 || empty($json['order_id'])) {
+        throw new RuntimeException(
+            'Midtrans status error (' . $sc . '): ' . ($json['status_message'] ?? 'order tidak ditemukan')
+        );
+    }
+
     return $json;
 }
 
