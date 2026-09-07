@@ -32,7 +32,7 @@ Subfolder: galeri, layanan, pembayaran, peraturan, qris, sertifikasi, sertifikat
 - [x] 6. Audit Detail Pendaftaran
 - [x] 7. Perbaiki path upload/file (404)
 - [x] 8. Keamanan upload file
-- [ ] 9. Keamanan sistem admin & user
+- [x] 9. Keamanan sistem admin & user
 - [ ] 10. Testing end-to-end
 - [ ] 11. Jangan ubah file yang sudah berjalan tanpa alasan
 - [ ] 12. Pakai DB & kode nyata sebagai acuan
@@ -125,3 +125,12 @@ Subfolder: galeri, layanan, pembayaran, peraturan, qris, sertifikasi, sertifikat
 - `admin/detail_pendaftaran.php` upload sertifikat: tambah validasi MIME `application/pdf` (dulu cuma cek ekstensi dari nama).
 - Uji: PNG valid tersimpan nama acak; **file PHP disamarkan `.png` (MIME diklaim image/png) DITOLAK** oleh finfo; hapus POST tanpa CSRF -> 419; `proses_*` tanpa login -> redirect.
 - SISA item 9: `kelola_running_text.php` & `kelola_layanan.php` form POST belum CSRF (hanya teks/relatif rendah risiko); `detail_pendaftaran.php` form belum CSRF.
+
+### 9. Keamanan sistem admin & user — SELESAI
+- **Session & role check**: seluruh halaman admin sekarang pakai `admin_auth.php` (cek `status_login` + role admin/super_admin) atau minimal cek setara. Halaman super-admin-only (`verifikasi_admin.php`, `proses_verifikasi.php`) benar-benar cek `super_admin`.
+- **CSRF** (baru `admin/partials/csrf.php`): token di semua endpoint yang mengubah data — data_user, edit_user, advokat (tambah/edit/hapus/import), galeri/struktur/peraturan (tambah/edit/hapus), pengumuman, data_pendaftaran (ubah status/hapus), detail_pendaftaran (status/hasil/sertifikat), kelola_layanan, kelola_running_text, proses_verifikasi, notifikasi. Aksi berbasis GET (`?hapus=`, `?aksi=terima`) diubah jadi POST.
+- **Prepared statement**: semua modul yang ditulis ulang (advokat, CMS, user, notifikasi). `user/proses_register.php` diubah ke prepared. `admin/proses_login.php` & `admin/proses_register.php` & `user/proses_login.php` memakai `mysqli_real_escape_string` konsisten (aman dari injection; belum prepared — dicatat sebagai perbaikan opsional).
+- **IDOR user**: semua query sisi user difilter `id_user` pemilik (`detail_pendaftaran`, `pembayaran`, `proses_pembayaran`, `notifikasi`, `profil`). Diverifikasi.
+- **XSS**: running-text ticker publik (`header.php`) dulu `innerHTML = msg.pesan` + `json_encode` tanpa escape tag -> **XSS via konten admin**. Diperbaiki: `json_encode` + `JSON_HEX_TAG|HEX_APOS|HEX_QUOT|HEX_AMP`, render pakai `textContent`/`createElement`. Output `pesan`/`icon` di admin & publik di-`htmlspecialchars`. Modul lain sudah pakai `e()`/`htmlspecialchars` konsisten.
+- **`proses_verifikasi.php`**: dulu redirect ke `../verifikasi_admin.php` (path salah, di root -> tidak ada). Diperbaiki + notifikasi ke admin yang disetujui.
+- Uji: POST tanpa CSRF -> 419; dengan CSRF -> 302 & data berubah.
