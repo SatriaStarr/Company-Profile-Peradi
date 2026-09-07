@@ -125,6 +125,10 @@ if (isset($conn) && $conn instanceof mysqli && !empty($_SESSION['id_user'])) {
     <ul class="menu">
         <li><a href="data_advokat.php" class="<?= $__active === 'advokat' ? 'active' : '' ?>">
             <i class="fa-solid fa-address-card"></i> Data Advokat</a></li>
+        <?php if (($_SESSION['role'] ?? '') === 'super_admin'): ?>
+        <li><a href="cek_integrasi.php" class="<?= $__current === 'cek_integrasi.php' ? 'active' : '' ?>">
+            <i class="fa-solid fa-plug-circle-check"></i> Cek Integrasi</a></li>
+        <?php endif; ?>
         <li><a href="../index.php">
             <i class="fa-solid fa-arrow-left"></i> Kembali ke Website</a></li>
     </ul>
