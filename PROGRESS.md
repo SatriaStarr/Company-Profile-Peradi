@@ -31,7 +31,7 @@ Subfolder: galeri, layanan, pembayaran, peraturan, qris, sertifikasi, sertifikat
 - [x] 5. Audit Data Advokat
 - [x] 6. Audit Detail Pendaftaran
 - [x] 7. Perbaiki path upload/file (404)
-- [ ] 8. Keamanan upload file
+- [x] 8. Keamanan upload file
 - [ ] 9. Keamanan sistem admin & user
 - [ ] 10. Testing end-to-end
 - [ ] 11. Jangan ubah file yang sudah berjalan tanpa alasan
@@ -113,3 +113,15 @@ Subfolder: galeri, layanan, pembayaran, peraturan, qris, sertifikasi, sertifikat
 - Tidak ditemukan referensi ke file fiktif `detail_pembayaran.php`. `detail_peserta.php` & `hasil_pengumuman.php` sudah diperbaiki di item 1 & 3.
 - Link file CMS admin (`../uploads/galeri|struktur|peraturan|layanan/`) sudah benar (folder ada di root) — tidak diubah.
 - Uji: semua halaman user render tanpa error; detail pendaftaran id 1 & 2 OK.
+
+### 8. Keamanan upload file — SELESAI
+- **`uploads/.htaccess` baru**: matikan directory listing + tolak eksekusi `.php/.phtml/.phar/.pl/.py/.sh/...` di seluruh `uploads/` dan subfolder (blanket anti-RCE untuk semua jalur upload).
+- Upload sisi USER (bukti pembayaran, pendaftaran PKPA/UPA) SUDAH aman sebelumnya: validasi MIME `finfo`, batas ukuran, nama acak `random_bytes` (bukan nama asli user). Diverifikasi, tidak diubah.
+- **CMS admin (galeri, struktur, peraturan) ditulis ulang** — sebelumnya: TANPA auth di sebagian `proses_*`/`hapus_*`, SQLi (string interpolation), upload tanpa validasi ekstensi (`proses_tambah_struktur`, semua `proses_edit_*`), `proses_edit_galeri` memakai **nama file asli user** (`time().'_'.$_FILES['foto']['name']`). Kini semua:
+  - `require_once partials/admin_auth.php` (cek login + ROLE + CSRF),
+  - `csrf_check()` + `csrf_field()` di form + modal hapus (hapus jadi POST, bukan GET),
+  - prepared statement,
+  - upload via `simpan_upload()` (MIME finfo + whitelist + ukuran + nama acak + `getimagesize` untuk gambar).
+- `admin/detail_pendaftaran.php` upload sertifikat: tambah validasi MIME `application/pdf` (dulu cuma cek ekstensi dari nama).
+- Uji: PNG valid tersimpan nama acak; **file PHP disamarkan `.png` (MIME diklaim image/png) DITOLAK** oleh finfo; hapus POST tanpa CSRF -> 419; `proses_*` tanpa login -> redirect.
+- SISA item 9: `kelola_running_text.php` & `kelola_layanan.php` form POST belum CSRF (hanya teks/relatif rendah risiko); `detail_pendaftaran.php` form belum CSRF.

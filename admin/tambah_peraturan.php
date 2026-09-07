@@ -1,10 +1,4 @@
-<?php
-session_start();
-if (!isset($_SESSION['status_login'])) {
-    header("Location: index.php");
-    exit;
-}
-?>
+<?php require_once __DIR__ . '/partials/admin_auth.php'; ?>
 
 <!DOCTYPE html>
 <html lang="id">
@@ -108,6 +102,7 @@ if (!isset($_SESSION['status_login'])) {
         </h2>
 
         <form action="proses_tambah_peraturan.php" method="POST" enctype="multipart/form-data">
+            <?= csrf_field() ?>
 
             <div class="form-section-title">
                 <i class="fa-solid fa-file-circle-plus"></i> Informasi Peraturan

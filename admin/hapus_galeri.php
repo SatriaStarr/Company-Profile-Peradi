@@ -1,28 +1,33 @@
 <?php
-session_start();
-include 'koneksi.php';
+require_once __DIR__ . '/partials/admin_auth.php';
+require_once __DIR__ . '/../upload_helper.php';
 
-if (!isset($_SESSION['status_login']) || $_SESSION['status_login'] != true) {
-    header("Location: index.php");
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('Location: galeri.php');
+    exit;
+}
+csrf_check();
+
+$id = (int) ($_POST['id'] ?? 0);
+if ($id <= 0) {
+    header('Location: galeri.php');
     exit;
 }
 
-$id = intval($_GET['id']);
+$stmt = mysqli_prepare($conn, 'SELECT foto FROM galeri WHERE id = ? LIMIT 1');
+mysqli_stmt_bind_param($stmt, 'i', $id);
+mysqli_stmt_execute($stmt);
+$foto = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt))['foto'] ?? '';
+mysqli_stmt_close($stmt);
 
-// Ambil nama file
-$data = mysqli_query($conn, "SELECT foto FROM galeri WHERE id=$id");
-$row = mysqli_fetch_assoc($data);
+$stmt = mysqli_prepare($conn, 'DELETE FROM galeri WHERE id = ? LIMIT 1');
+mysqli_stmt_bind_param($stmt, 'i', $id);
+mysqli_stmt_execute($stmt);
+mysqli_stmt_close($stmt);
 
-if ($row) {
-    $file = '../uploads/galeri/' . $row['foto'];
-
-    // Hapus file fisik
-    if (file_exists($file)) {
-        unlink($file);
-    }
-
-    // Hapus DB
-    mysqli_query($conn, "DELETE FROM galeri WHERE id=$id");
+if ($foto) {
+    hapus_upload('uploads/galeri/' . basename($foto));
 }
 
-header("Location: galeri.php");
+header('Location: galeri.php?pesan=hapus_sukses');
+exit;

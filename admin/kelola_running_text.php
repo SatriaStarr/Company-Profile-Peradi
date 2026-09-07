@@ -1,12 +1,5 @@
 <?php
-session_start();
-include 'koneksi.php';
-
-// Cek Login
-if (!isset($_SESSION['status_login']) || $_SESSION['status_login'] != true) {
-    header("Location: index.php?pesan=belum_login");
-    exit;
-}
+require_once __DIR__ . '/partials/admin_auth.php';
 
 // Hitung Notif
 $q_pending = mysqli_query($conn, "SELECT COUNT(*) as total FROM users WHERE status='pending'");

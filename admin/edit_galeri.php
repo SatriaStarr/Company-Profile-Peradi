@@ -1,23 +1,18 @@
 <?php
-session_start();
-include 'koneksi.php';
+require_once __DIR__ . '/partials/admin_auth.php';
 
-if (!isset($_SESSION['status_login'])) {
-    header("Location: index.php");
+$id = (int) ($_GET['id'] ?? 0);
+if ($id <= 0) {
+    header('Location: galeri.php');
     exit;
 }
-
-if (!isset($_GET['id'])) {
-    header("Location: galeri.php");
-    exit;
-}
-
-$id = mysqli_real_escape_string($conn, $_GET['id']);
-$query = mysqli_query($conn, "SELECT * FROM galeri WHERE id='$id'");
-$data = mysqli_fetch_assoc($query);
-
+$stmt = mysqli_prepare($conn, 'SELECT * FROM galeri WHERE id = ? LIMIT 1');
+mysqli_stmt_bind_param($stmt, 'i', $id);
+mysqli_stmt_execute($stmt);
+$data = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+mysqli_stmt_close($stmt);
 if (!$data) {
-    echo "Data tidak ditemukan!";
+    header('Location: galeri.php');
     exit;
 }
 ?>
@@ -72,6 +67,7 @@ if (!$data) {
         <h2 style="text-align:center;margin-bottom:25px;">Edit Galeri</h2>
 
         <form action="proses_edit_galeri.php" method="POST" enctype="multipart/form-data">
+            <?= csrf_field() ?>
 
             <input type="hidden" name="id" value="<?= $data['id']; ?>">
             <input type="hidden" name="foto_lama" value="<?= $data['foto']; ?>">

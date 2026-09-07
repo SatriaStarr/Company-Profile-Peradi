@@ -1,44 +1,32 @@
 <?php
-session_start();
-include 'koneksi.php';
+require_once __DIR__ . '/partials/admin_auth.php';
+require_once __DIR__ . '/../upload_helper.php';
 
-if (!isset($_SESSION['status_login']) || $_SESSION['status_login'] != true) {
-    header("Location: index.php");
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('Location: tambah_galeri.php');
+    exit;
+}
+csrf_check();
+
+$judul = trim($_POST['judul'] ?? '');
+if ($judul === '') {
+    header('Location: tambah_galeri.php?pesan=kosong');
     exit;
 }
 
-$judul = mysqli_real_escape_string($conn, $_POST['judul']);
-
-// ===== PROSES FILE FOTO =====
-$file_name  = $_FILES['foto']['name'];
-$file_tmp   = $_FILES['foto']['tmp_name'];
-$file_error = $_FILES['foto']['error'];
-
-$ekstensi_valid = ['jpg', 'jpeg', 'png'];
-$ekstensi = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
-
-if ($file_error !== 0) {
-    die("Upload foto gagal.");
+try {
+    $path = simpan_upload($_FILES['foto'] ?? [], 'galeri', ['image'], 3145728, true);
+} catch (RuntimeException $e) {
+    die(e($e->getMessage()));
 }
+$foto = basename($path);
 
-if (!in_array($ekstensi, $ekstensi_valid)) {
-    die("Format foto tidak valid.");
+$stmt = mysqli_prepare($conn, 'INSERT INTO galeri (judul, foto) VALUES (?, ?)');
+mysqli_stmt_bind_param($stmt, 'ss', $judul, $foto);
+
+if (mysqli_stmt_execute($stmt)) {
+    header('Location: galeri.php?pesan=sukses');
+    exit;
 }
-
-// Rename unik
-$nama_file_baru = uniqid('galeri_') . '.' . $ekstensi;
-$upload_path = '../uploads/galeri/' . $nama_file_baru;
-
-move_uploaded_file($file_tmp, $upload_path);
-
-// ===== SIMPAN DB =====
-$query = mysqli_query($conn, "
-    INSERT INTO galeri (judul, foto)
-    VALUES ('$judul', '$nama_file_baru')
-");
-
-if ($query) {
-    header("Location: galeri.php?pesan=sukses");
-} else {
-    echo "Gagal menyimpan galeri.";
-}
+hapus_upload($path);
+die('Gagal menyimpan galeri.');

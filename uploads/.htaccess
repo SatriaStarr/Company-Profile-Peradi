@@ -1,0 +1,12 @@
+# Keamanan folder upload
+# - Matikan directory listing
+# - Tolak eksekusi semua jenis script di dalam uploads/ dan subfolder-nya
+Options -Indexes -ExecCGI
+
+php_flag engine off
+AddHandler cgi-script .php .php3 .php4 .php5 .php7 .php8 .phtml .pl .py .cgi .asp .aspx .sh .bat
+RemoveHandler .php .phtml .php3 .php4 .php5 .php7 .php8
+
+<FilesMatch "\.(php|php[0-9]?|phtml|phar|pl|py|cgi|asp|aspx|sh|bat|htaccess)$">
+    Require all denied
+</FilesMatch>

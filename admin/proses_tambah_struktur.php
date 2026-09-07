@@ -1,18 +1,33 @@
 <?php
-session_start();
-include 'koneksi.php';
+require_once __DIR__ . '/partials/admin_auth.php';
+require_once __DIR__ . '/../upload_helper.php';
 
-$nama    = mysqli_real_escape_string($conn, $_POST['nama']);
-$jabatan = mysqli_real_escape_string($conn, $_POST['jabatan']);
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('Location: tambah_struktur.php');
+    exit;
+}
+csrf_check();
 
-$ext = strtolower(pathinfo($_FILES['foto']['name'], PATHINFO_EXTENSION));
-$nama_file = uniqid('struktur_').'.'.$ext;
+$nama    = trim($_POST['nama'] ?? '');
+$jabatan = trim($_POST['jabatan'] ?? '');
+if ($nama === '' || $jabatan === '') {
+    header('Location: tambah_struktur.php?pesan=kosong');
+    exit;
+}
 
-move_uploaded_file($_FILES['foto']['tmp_name'], '../uploads/struktur/'.$nama_file);
+try {
+    $path = simpan_upload($_FILES['foto'] ?? [], 'struktur', ['image'], 3145728, true);
+} catch (RuntimeException $e) {
+    die(e($e->getMessage()));
+}
+$foto = basename($path);
 
-mysqli_query($conn, "
-INSERT INTO struktur_pengurus (nama, jabatan, foto)
-VALUES ('$nama','$jabatan','$nama_file')
-");
+$stmt = mysqli_prepare($conn, 'INSERT INTO struktur_pengurus (nama, jabatan, foto) VALUES (?, ?, ?)');
+mysqli_stmt_bind_param($stmt, 'sss', $nama, $jabatan, $foto);
 
-header("Location: struktur_pengurus.php");
+if (mysqli_stmt_execute($stmt)) {
+    header('Location: struktur_pengurus.php?pesan=sukses');
+    exit;
+}
+hapus_upload($path);
+die('Gagal menyimpan data struktur.');

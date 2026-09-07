@@ -1,12 +1,5 @@
 <?php
-session_start();
-include 'koneksi.php';
-
-// Cek Login
-if (!isset($_SESSION['status_login']) || $_SESSION['status_login'] != true) {
-    header("Location: index.php?pesan=belum_login");
-    exit;
-}
+require_once __DIR__ . '/partials/admin_auth.php';
 
 // Hitung Notif
 $q_pending = mysqli_query($conn, "SELECT COUNT(*) as total FROM users WHERE status='pending'");
@@ -280,10 +273,12 @@ $query = mysqli_query($conn, "SELECT * FROM peraturan ORDER BY created_at DESC")
             <i class="fa-solid fa-triangle-exclamation"></i>
             <h4>Konfirmasi Hapus</h4>
             <p>Apakah Anda yakin ingin menghapus peraturan ini?</p>
-            <div style="margin-top: 20px;">
-                <a href="#" id="confirmDeleteYes" class="btn btn-danger" style="margin-right: 10px;">Ya, Hapus</a>
-                <button onclick="closeDeleteModal()" class="btn btn-secondary">Batal</button>
-            </div>
+            <form method="POST" action="hapus_peraturan.php" style="margin-top: 20px;">
+                <?= csrf_field() ?>
+                <input type="hidden" name="id" id="confirmDeleteId">
+                <button type="submit" class="btn btn-danger" style="margin-right: 10px;">Ya, Hapus</button>
+                <button type="button" onclick="closeDeleteModal()" class="btn btn-secondary">Batal</button>
+            </form>
         </div>
     </div>
 
@@ -302,7 +297,7 @@ $query = mysqli_query($conn, "SELECT * FROM peraturan ORDER BY created_at DESC")
     }
 
     function openDeleteModal(id) {
-        document.getElementById('confirmDeleteYes').href = 'hapus_peraturan.php?id=' + id;
+        document.getElementById('confirmDeleteId').value = id;
         document.getElementById('confirmDeleteModal').style.display = 'flex';
     }
     

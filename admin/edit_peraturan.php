@@ -1,23 +1,18 @@
 <?php
-session_start();
-include 'koneksi.php';
+require_once __DIR__ . '/partials/admin_auth.php';
 
-if (!isset($_SESSION['status_login'])) {
-    header("Location: index.php");
+$id = (int) ($_GET['id'] ?? 0);
+if ($id <= 0) {
+    header('Location: peraturan.php');
     exit;
 }
-
-if (!isset($_GET['id'])) {
-    header("Location: peraturan.php");
-    exit;
-}
-
-$id = $_GET['id'];
-$query = mysqli_query($conn, "SELECT * FROM peraturan WHERE id = '$id'");
-$data = mysqli_fetch_assoc($query);
-
+$stmt = mysqli_prepare($conn, 'SELECT * FROM peraturan WHERE id = ? LIMIT 1');
+mysqli_stmt_bind_param($stmt, 'i', $id);
+mysqli_stmt_execute($stmt);
+$data = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+mysqli_stmt_close($stmt);
 if (!$data) {
-    echo "Data tidak ditemukan!";
+    header('Location: peraturan.php');
     exit;
 }
 ?>
@@ -107,6 +102,7 @@ if (!$data) {
         <h2 style="margin-bottom:30px;text-align:center;">Edit Peraturan</h2>
 
         <form action="proses_edit_peraturan.php" method="POST" enctype="multipart/form-data">
+            <?= csrf_field() ?>
 
             <input type="hidden" name="id" value="<?= $data['id']; ?>">
             <input type="hidden" name="file_lama" value="<?= $data['file_pdf']; ?>">

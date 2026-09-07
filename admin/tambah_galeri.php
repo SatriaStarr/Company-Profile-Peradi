@@ -1,10 +1,4 @@
-<?php
-session_start();
-if (!isset($_SESSION['status_login']) || $_SESSION['status_login'] != true) {
-    header("Location: index.php");
-    exit;
-}
-?>
+<?php require_once __DIR__ . '/partials/admin_auth.php'; ?>
 
 <!DOCTYPE html>
 <html lang="id">
@@ -102,6 +96,7 @@ if (!isset($_SESSION['status_login']) || $_SESSION['status_login'] != true) {
         </h2>
 
         <form action="proses_tambah_galeri.php" method="POST" enctype="multipart/form-data">
+            <?= csrf_field() ?>
 
             <div class="form-section-title">
                 <i class="fa-solid fa-image"></i> Informasi Galeri

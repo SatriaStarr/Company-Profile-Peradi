@@ -1052,6 +1052,20 @@ if (
         }
 
 
+        // Validasi MIME asli (bukan sekadar ekstensi)
+        $finfo_s = finfo_open(FILEINFO_MIME_TYPE);
+        $mime_s  = finfo_file($finfo_s, $file['tmp_name']);
+        finfo_close($finfo_s);
+
+        if ($mime_s !== 'application/pdf') {
+
+            redirectDetail(
+                $id_pendaftaran,
+                'gagal'
+            );
+        }
+
+
         $upload_dir =
             __DIR__
             . '/../uploads/sertifikat/';

@@ -1,25 +1,18 @@
 <?php
-session_start();
-include 'koneksi.php';
+require_once __DIR__ . '/partials/admin_auth.php';
 
-// CEK LOGIN
-if (!isset($_SESSION['status_login']) || $_SESSION['status_login'] != true) {
-    header("Location: index.php");
+$id = (int) ($_GET['id'] ?? 0);
+if ($id <= 0) {
+    header('Location: struktur_pengurus.php');
     exit;
 }
-
-// CEK ID
-if (!isset($_GET['id'])) {
-    header("Location: struktur_pengurus.php");
-    exit;
-}
-
-$id = intval($_GET['id']);
-$query = mysqli_query($conn, "SELECT * FROM struktur_pengurus WHERE id = $id");
-$data = mysqli_fetch_assoc($query);
-
+$stmt = mysqli_prepare($conn, 'SELECT * FROM struktur_pengurus WHERE id = ? LIMIT 1');
+mysqli_stmt_bind_param($stmt, 'i', $id);
+mysqli_stmt_execute($stmt);
+$data = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+mysqli_stmt_close($stmt);
 if (!$data) {
-    echo "Data tidak ditemukan!";
+    header('Location: struktur_pengurus.php');
     exit;
 }
 ?>
@@ -126,6 +119,7 @@ if (!$data) {
         </h2>
 
         <form action="proses_edit_struktur.php" method="POST" enctype="multipart/form-data">
+            <?= csrf_field() ?>
 
             <input type="hidden" name="id" value="<?= $data['id']; ?>">
             <input type="hidden" name="foto_lama" value="<?= $data['foto']; ?>">
