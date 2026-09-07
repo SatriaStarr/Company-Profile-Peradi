@@ -2,6 +2,7 @@
 session_start();
 
 require_once __DIR__ . '/../koneksi.php';
+require_once __DIR__ . '/google_config.php';
 
 /*
 |--------------------------------------------------------------------------
@@ -846,6 +847,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 </div>
 
+            <?php elseif ($_GET['pesan'] === 'google_gagal'): ?>
+
+                <div class="alert alert-danger">
+
+                    <i class="fa-brands fa-google"></i>
+
+                    Login dengan Google gagal. Silakan coba lagi.
+
+                </div>
+
+            <?php elseif ($_GET['pesan'] === 'google_off'): ?>
+
+                <div class="alert alert-danger">
+
+                    <i class="fa-brands fa-google"></i>
+
+                    Login dengan Google belum diaktifkan.
+
+                </div>
+
             <?php endif; ?>
 
 
@@ -918,6 +939,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
              GOOGLE LOGIN
         ================================================== -->
 
+        <?php if (google_aktif()): ?>
+
         <div class="divider">
             ATAU
         </div>
@@ -933,6 +956,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             Login dengan Google
 
         </a>
+
+        <?php endif; ?>
 
 
         <!-- =================================================

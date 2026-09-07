@@ -1,0 +1,28 @@
+<?php
+/*
+|--------------------------------------------------------------------------
+| KREDENSIAL GOOGLE OAUTH  (SALIN menjadi: config/google_keys.local.php)
+|--------------------------------------------------------------------------
+| Sumber: https://console.cloud.google.com/apis/credentials
+|
+| 1. Buat / pilih Project.
+| 2. "OAuth consent screen": User Type = External, isi nama app + email,
+|    tambahkan scope: openid, .../auth/userinfo.email, .../auth/userinfo.profile.
+|    Selama masih "Testing", tambahkan email penguji di "Test users".
+| 3. "Credentials" -> Create Credentials -> OAuth client ID -> Web application.
+|    - Authorized JavaScript origins:  http://localhost
+|    - Authorized redirect URIs:       http://localhost/WEB-DPC-PERADI-PONTIANAK/user/google_callback.php
+|      (sesuaikan host/port dengan lingkungan Anda; untuk domain produksi pakai https)
+| 4. Salin Client ID & Client Secret ke config/google_keys.local.php.
+|
+| JANGAN commit config/google_keys.local.php (sudah di .gitignore).
+*/
+
+return [
+    'client_id'     => 'xxxxxxxxxxxx-xxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com',
+    'client_secret' => 'GOCSPX-xxxxxxxxxxxxxxxxxxxx',
+
+    // Kosongkan untuk memakai deteksi otomatis (scheme://host/WEB-DPC-PERADI-PONTIANAK/user/google_callback.php).
+    // Isi manual bila host di balik proxy/berbeda.
+    'redirect_uri'  => '',
+];

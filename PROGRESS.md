@@ -43,7 +43,7 @@ Subfolder: galeri, layanan, pembayaran, peraturan, qris, sertifikasi, sertifikat
 - [x] 17. Penyesuaian DB Payment Gateway
 - [x] 18. Testing pembayaran menyeluruh
 - [x] 19. Popup konfirmasi logout admin & user
-- [ ] 20. Login dengan Google
+- [x] 20. Login dengan Google
 
 ---
 
@@ -170,3 +170,29 @@ Subfolder: galeri, layanan, pembayaran, peraturan, qris, sertifikasi, sertifikat
 - **User**: `user/dashboard.php` (satu-satunya halaman user dengan link logout).
 - Mekanisme session/logout TIDAK diubah — hanya konfirmasi sebelum diteruskan.
 - Uji: modal + teks muncul di semua halaman admin & dashboard user.
+
+### 20. Login dengan Google — SELESAI (mode: config placeholder)
+- Tombol "Login dengan Google" sudah ada di `user/login.php`; kini hanya tampil bila `google_aktif()` (kredensial terisi). Login username/password tidak diubah.
+- **Config**: `user/google_config.php` ditulis ulang -> baca `config/google_keys.local.php` (kosong, gitignored) + `.example`. Helper `google_aktif()`, `google_client_id/secret()`, `google_redirect_uri()` (auto atau manual). Konstanta lama tetap ada (kompatibilitas).
+- `user/google_login.php`: state anti-CSRF acak per request, redirect ke Google. Bila belum dikonfigurasi -> `login.php?pesan=google_off`.
+- `user/google_callback.php` ditulis ulang:
+  - verifikasi `state` (`hash_equals`), tukar code->token, ambil profil (butuh `email_verified`).
+  - pencocokan user: **google_id -> email**. Email sudah ada (akun login biasa) -> `google_id` DITAUTKAN, tidak buat akun ganda. Belum ada -> buat akun `role=user status=active`, username unik.
+  - **prepared statement** semua (dulu `mysqli_real_escape_string`).
+  - **password Google TIDAK disimpan** (hash acak).
+  - session dibuat SAMA dengan login biasa (`user_id`, `role=user`, `user_login=true`, `session_regenerate_id`) -> `dashboard.php`.
+- Pesan error baru di `login.php`: `google_gagal`, `google_off`.
+- Uji: gating (tombol hilang + redirect saat non-aktif); logika pencocokan akun (login ke-2 via google_id = user sama; email cocok -> google_id tertaut; tidak ada duplikat). Handshake OAuth penuh menunggu Client ID/Secret user -> `SETUP_GOOGLE.md`.
+
+---
+
+## Ringkasan migrasi DB (jalankan berurutan bila setup dari awal)
+1. `database/sertifikasi.sql` (skema dasar sertifikasi — bila belum ada)
+2. `database/migrasi_2026_09_07_status_pendaftaran.sql`
+3. `database/migrasi_2026_09_07_sertifikat_tanggal_terbit.sql`
+4. `database/migrasi_2026_09_07_pendaftaran_upa_lengkap.sql`
+5. `database/migrasi_2026_09_07_pembayaran_gateway.sql`
+
+## File konfigurasi yang perlu diisi (opsional; sistem jalan tanpa ini)
+- `config/midtrans_keys.local.php`  -> lihat `SETUP_MIDTRANS.md`
+- `config/google_keys.local.php`    -> lihat `SETUP_GOOGLE.md`
