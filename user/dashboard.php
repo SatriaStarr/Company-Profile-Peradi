@@ -259,6 +259,24 @@ $jenis_pendaftaran =
 $jenis_tampil =
     strtoupper($jenis_pendaftaran);
 
+
+/*
+|--------------------------------------------------------------------------
+| JUMLAH NOTIFIKASI BELUM DIBACA
+|--------------------------------------------------------------------------
+*/
+$notif_belum = 0;
+if ($stmt_n = mysqli_prepare($conn, 'SELECT COUNT(*) c FROM notifikasi WHERE id_user = ? AND is_read = 0')) {
+    mysqli_stmt_bind_param($stmt_n, 'i', $user_id);
+    mysqli_stmt_execute($stmt_n);
+    $notif_belum = (int) (mysqli_fetch_assoc(mysqli_stmt_get_result($stmt_n))['c'] ?? 0);
+    mysqli_stmt_close($stmt_n);
+}
+$notif_badge = $notif_belum > 0
+    ? '<span style="background:#ef4444;color:#fff;font-size:10px;font-weight:700;border-radius:20px;padding:2px 7px;margin-left:6px;">'
+        . ($notif_belum > 9 ? '9+' : $notif_belum) . '</span>'
+    : '';
+
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -1006,6 +1024,8 @@ body {
 
 .quick-item {
 
+    position: relative;
+
     display: flex;
 
     align-items: center;
@@ -1288,7 +1308,7 @@ body {
 
                 <i class="fa-solid fa-bell"></i>
 
-                Notifikasi
+                Notifikasi <?= $notif_badge ?>
 
             </a>
 
@@ -1902,6 +1922,9 @@ body {
 
 
                 <div class="quick-text">
+
+                    <?php if ($notif_belum > 0): ?><span style="position:absolute;top:10px;right:12px;background:#ef4444;color:#fff;font-size:10px;font-weight:700;border-radius:20px;padding:2px 7px;"><?= $notif_belum > 9 ? '9+' : $notif_belum ?></span><?php endif; ?>
+
 
                     <strong>
                         Notifikasi
