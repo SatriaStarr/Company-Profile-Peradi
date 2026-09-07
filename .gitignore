@@ -7,3 +7,18 @@ user/google_config.local.php
 uploads/advokat/
 !uploads/advokat/.gitkeep
 config/google_keys.local.php
+
+# Berkas unggahan berisi data pribadi peserta — jangan commit
+uploads/pembayaran/*
+uploads/bukti_pembayaran/*
+uploads/sertifikat/*
+uploads/sertifikasi/*
+uploads/advokat/*
+uploads/foto/*
+uploads/ijazah/*
+uploads/ktp/*
+uploads/tanda_tangan/*
+uploads/upa/
+!uploads/**/.htaccess
+!uploads/**/.gitkeep
+user/uploads/

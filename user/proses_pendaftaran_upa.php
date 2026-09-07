@@ -367,7 +367,7 @@ function upload_upa_file(
 
     $upload_dir =
         __DIR__ .
-        '/' .
+        '/../' .
         $folder;
 
 
@@ -512,7 +512,7 @@ try {
 
     $signature_dir =
         __DIR__ .
-        '/uploads/upa/tanda_tangan';
+        '/../uploads/upa/tanda_tangan';
 
 
     if (!is_dir($signature_dir)) {

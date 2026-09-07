@@ -264,7 +264,7 @@ function upload_file(
 
     $upload_dir =
         __DIR__ .
-        '/' .
+        '/../' .
         $folder;
 
 
@@ -359,7 +359,7 @@ if (
 
     $signature_dir =
         __DIR__ .
-        '/uploads/tanda_tangan';
+        '/../uploads/tanda_tangan';
 
 
     if (!is_dir($signature_dir)) {
