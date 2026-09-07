@@ -1,0 +1,24 @@
+<?php
+/*
+|--------------------------------------------------------------------------
+| KREDENSIAL MIDTRANS  (SALIN file ini menjadi: config/midtrans_keys.local.php)
+|--------------------------------------------------------------------------
+| Ambil dari https://dashboard.sandbox.midtrans.com  ->  Settings -> Access Keys
+| JANGAN commit file config/midtrans_keys.local.php ke git (sudah di .gitignore).
+|
+| Untuk pengujian gunakan kredensial SANDBOX. Jangan pakai Production dulu.
+*/
+
+return [
+    // true = Production, false = Sandbox (WAJIB false untuk testing)
+    'is_production' => false,
+
+    // Server Key (rahasia, dipakai di sisi server saja)
+    'server_key'    => 'SB-Mid-server-xxxxxxxxxxxxxxxxxxxxxxxx',
+
+    // Client Key (boleh tampil di front-end)
+    'client_key'    => 'SB-Mid-client-xxxxxxxxxxxxxxxxxxxxxxxx',
+
+    // Merchant ID (opsional, untuk tampilan)
+    'merchant_id'   => 'Gxxxxxxxxx',
+];

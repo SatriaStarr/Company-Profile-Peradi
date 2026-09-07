@@ -3,6 +3,7 @@
 session_start();
 
 require_once __DIR__ . '/functions.php';
+require_once __DIR__ . '/../config/midtrans.php';
 
 require_user();
 
@@ -82,6 +83,14 @@ if (!$data) {
 // =====================================================
 
 $status_pembayaran = $data['status_pembayaran'] ?? 'belum_bayar';
+
+// status yang masih boleh membayar (manual atau gateway)
+$boleh_bayar = in_array(
+    $status_pembayaran,
+    ['belum_bayar', 'ditolak', 'kadaluarsa', 'dibatalkan'],
+    true
+);
+$gateway_aktif = midtrans_aktif();
 
 
 // =====================================================
@@ -410,8 +419,52 @@ $pesan = $_GET['pesan'] ?? '';
 
             </div>
 
+        <?php elseif ($pesan === 'gateway_off'): ?>
+
+            <div class="alert alert-error">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                Pembayaran online belum tersedia. Silakan gunakan transfer bank.
+            </div>
+
+        <?php elseif ($pesan === 'gateway_err'): ?>
+
+            <div class="alert alert-error">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                Gagal memulai pembayaran online<?= isset($_GET['detail']) ? ': ' . e($_GET['detail']) : '' ?>.
+                Silakan coba lagi atau gunakan transfer bank.
+            </div>
+
         <?php endif; ?>
 
+
+        <?php if ($status_pembayaran === 'pending'): ?>
+            <div class="alert" style="background:#fef3c7;color:#92400e;">
+                <i class="fa-solid fa-hourglass-half"></i>
+                Ada transaksi pembayaran online yang belum selesai.
+                <a href="midtrans_status.php?id=<?= $id_pendaftaran ?>" style="font-weight:800;text-decoration:underline;">Cek status pembayaran</a>.
+            </div>
+        <?php endif; ?>
+
+        <?php if ($boleh_bayar && $gateway_aktif): ?>
+            <div class="bank-card" style="border-left:5px solid #16a34a;">
+                <div class="bank-title">
+                    <i class="fa-solid fa-bolt"></i> Bayar Online (Kartu / VA / e-Wallet / QRIS)
+                </div>
+                <p style="color:#64748b;font-size:13px;margin:0 0 16px;">
+                    Pembayaran diproses otomatis oleh Midtrans. Status pendaftaran diperbarui
+                    segera setelah pembayaran berhasil — tanpa perlu unggah bukti.
+                </p>
+                <form action="midtrans_charge.php" method="POST">
+                    <input type="hidden" name="id_pendaftaran" value="<?= $id_pendaftaran ?>">
+                    <button type="submit" class="btn btn-primary" style="background:#16a34a;">
+                        <i class="fa-solid fa-credit-card"></i>
+                        Bayar Online Sekarang
+                    </button>
+                </form>
+            </div>
+
+            <div style="text-align:center;color:#94a3b8;font-weight:700;margin:8px 0 4px;">— ATAU —</div>
+        <?php endif; ?>
 
         <div class="service">
 
@@ -433,7 +486,7 @@ $pesan = $_GET['pesan'] ?? '';
 
                 <i class="fa-solid fa-building-columns"></i>
 
-                Informasi Rekening Pembayaran
+                Transfer Bank Manual
 
             </div>
 
@@ -500,7 +553,7 @@ $pesan = $_GET['pesan'] ?? '';
         </div>
 
 
-        <?php if ($status_pembayaran === 'belum_bayar'): ?>
+        <?php if ($boleh_bayar): ?>
 
 
             <form
@@ -515,6 +568,10 @@ $pesan = $_GET['pesan'] ?? '';
                     value="<?= $id_pendaftaran ?>"
                 >
 
+                <p class="hint" style="margin-bottom:12px;">
+                    Setelah transfer ke rekening di atas, unggah bukti transfer.
+                    Admin akan memverifikasi secara manual.
+                </p>
 
                 <div class="form-group">
 
@@ -522,7 +579,7 @@ $pesan = $_GET['pesan'] ?? '';
 
                         <i class="fa-solid fa-image"></i>
 
-                        Bukti Pembayaran
+                        Bukti Pembayaran (Transfer Bank)
 
                     </label>
 

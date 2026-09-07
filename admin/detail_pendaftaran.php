@@ -3918,6 +3918,36 @@ td {
             <?php endif; ?>
 
 
+            <div class="payment-row">
+                <div class="payment-label">Metode</div>
+                <div class="payment-value">
+                    <?php $__m = $pembayaran['metode'] ?? 'manual'; ?>
+                    <?= $__m === 'midtrans' ? 'Payment Gateway (Midtrans)' : 'Transfer Bank (Manual)' ?>
+                </div>
+            </div>
+
+            <?php if (($pembayaran['metode'] ?? '') === 'midtrans'): ?>
+                <?php foreach ([
+                    'order_id'           => 'Order ID',
+                    'transaction_id'     => 'Transaction ID',
+                    'payment_type'       => 'Jenis Pembayaran',
+                    'transaction_status' => 'Status Transaksi (Midtrans)',
+                ] as $__k => $__lbl):
+                    if (empty($pembayaran[$__k])) { continue; } ?>
+                    <div class="payment-row">
+                        <div class="payment-label"><?= e($__lbl) ?></div>
+                        <div class="payment-value"><?= e($pembayaran[$__k]) ?></div>
+                    </div>
+                <?php endforeach; ?>
+                <?php if (!empty($pembayaran['gross_amount'])): ?>
+                    <div class="payment-row">
+                        <div class="payment-label">Nominal Gateway</div>
+                        <div class="payment-value">Rp <?= e(number_format((float) $pembayaran['gross_amount'], 0, ',', '.')) ?></div>
+                    </div>
+                <?php endif; ?>
+            <?php endif; ?>
+
+
             <?php if (
                 isset(
                     $pembayaran['status']
@@ -4015,7 +4045,7 @@ td {
             <?php endif; ?>
 
 
-            <?php if (($pembayaran['status'] ?? '') === 'menunggu_verifikasi'): ?>
+            <?php if (($pembayaran['metode'] ?? 'manual') === 'manual' && ($pembayaran['status'] ?? '') === 'menunggu_verifikasi'): ?>
                 <div class="payment-row" style="border-top:1px dashed #e5e7eb;padding-top:14px;margin-top:6px;">
                     <div class="payment-label">Verifikasi Pembayaran</div>
                     <div class="payment-value" style="display:flex;gap:8px;">

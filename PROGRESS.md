@@ -34,14 +34,14 @@ Subfolder: galeri, layanan, pembayaran, peraturan, qris, sertifikasi, sertifikat
 - [x] 8. Keamanan upload file
 - [x] 9. Keamanan sistem admin & user
 - [x] 10. Testing end-to-end
-- [ ] 11. Jangan ubah file yang sudah berjalan tanpa alasan
-- [ ] 12. Pakai DB & kode nyata sebagai acuan
-- [ ] 13. Payment Gateway Midtrans Sandbox
-- [ ] 14. Pembayaran manual tetap dipertahankan
-- [ ] 15. Alur Payment Gateway lengkap
-- [ ] 16. Callback/webhook Midtrans
-- [ ] 17. Penyesuaian DB Payment Gateway
-- [ ] 18. Testing pembayaran menyeluruh
+- [x] 11. Jangan ubah file yang sudah berjalan tanpa alasan
+- [x] 12. Pakai DB & kode nyata sebagai acuan
+- [x] 13. Payment Gateway Midtrans Sandbox
+- [x] 14. Pembayaran manual tetap dipertahankan
+- [x] 15. Alur Payment Gateway lengkap
+- [x] 16. Callback/webhook Midtrans
+- [x] 17. Penyesuaian DB Payment Gateway
+- [x] 18. Testing pembayaran menyeluruh
 - [ ] 19. Popup konfirmasi logout admin & user
 - [ ] 20. Login dengan Google
 
@@ -143,3 +143,22 @@ Subfolder: galeri, layanan, pembayaran, peraturan, qris, sertifikasi, sertifikat
   - PKPA: daftar -> submit (foto_calon_advokat benar) -> bayar Rp 8.000.000 -> upload bukti -> admin verifikasi LUNAS -> pembayaran=lunas, pendaftaran=terdaftar. OK.
   - Edge: IDOR (user lain akses pendaftaran -> redirect, data tidak bocor); id tidak valid (user & admin -> redirect bersih); upload bukti milik orang lain -> diblok; pendaftaran ganda -> diarahkan ke yang ada, tidak buat baris kedua.
 - Catatan: harga PKPA di alur `proses_pendaftaran_pkpa.php` = Rp 8.000.000, di `proses_pendaftaran.php` generik = Rp 2.500.000 (tidak konsisten; alur pkpa yang dipakai). Tidak diubah — keputusan harga milik DPC.
+
+### 11. Jangan ubah file yang sudah berjalan tanpa alasan — DIPATUHI
+- Setiap perubahan punya alasan tercatat di file ini.
+- `user/proses_pembayaran.php`: HANYA ditambah notifikasi admin (2 baris) — logika pembayaran manual/upload bukti TIDAK diubah. Diverifikasi jalan di e2e item 10.
+- Migrasi DB hanya menambah kolom / memperluas enum (tidak menghapus kolom pembayaran manual mana pun).
+- File yang ditulis ulang hanya yang memang rusak/tidak aman (SQLi, tanpa auth, kolom salah, fatal error).
+
+### 12. Pakai DB & kode nyata sebagai acuan — DIPATUHI
+- Skema DB nyata didokumentasikan di bagian atas file ini & dijadikan acuan.
+- Ketidaksesuaian dokumen `.md` lama vs DB yang diperbaiki: `bukti_bayar`->`bukti_pembayaran`, `jenis`->`jenis_pendaftaran`, `tanggal`->`tanggal_daftar`, `catatan_admin`->`catatan`, kolom `pendaftaran_pkpa.foto`->`foto_calon_advokat`, tabel `berkas` (tidak ada) -> `pendaftaran_pkpa`/`_upa`, enum status pendaftaran, `jenis_kelamin` enum('L','P').
+
+### 13-18. Payment Gateway Midtrans Sandbox — SELESAI (mode: config placeholder)
+- **DB**: `database/migrasi_2026_09_07_pembayaran_gateway.sql` — kolom `metode`(manual/midtrans), `order_id`(UNIQUE), `transaction_id`, `payment_type`, `transaction_status`, `fraud_status`, `gross_amount`, `snap_token`, `midtrans_response`, `paid_at`, `updated_at`. Enum `status` diperluas `+pending,kadaluarsa,dibatalkan`. Kolom manual TIDAK diubah. (item 17)
+- **Config**: `config/midtrans.php` (klien Snap API via cURL, tanpa Composer) + `config/midtrans_keys.local.php` (kosong, gitignored) + `.example`. Selama `server_key` kosong -> `midtrans_aktif()`=false -> tombol "Bayar Online" disembunyikan, sistem tetap jalan penuh dengan manual. (item 14)
+- **Alur** (item 15): `user/pembayaran.php` menampilkan **2 opsi** (Bayar Online / Transfer Bank Manual). "Bayar Online" -> `user/midtrans_charge.php` (buat transaksi Snap, simpan order_id, status `pending`) -> redirect ke halaman Midtrans -> kembali ke `user/midtrans_status.php` (sinkron status dari API + tampilkan hasil). Menangani pending/settlement/deny/cancel/expire/failure.
+- **Webhook** (item 16): `midtrans_notify.php` (root) — verifikasi `signature_key` sha512, lalu **tarik ulang status resmi via API `/status`** (tidak percaya body mentah), lalu terapkan idempoten (transaksi + `FOR UPDATE`, cek perubahan, tidak menurunkan status `lunas`, validasi nominal). Balas HTTP 200.
+- **Helper**: `pembayaran_helper.php` — `pembayaran_terapkan_notif()`, `pembayaran_sinkron_dari_midtrans()`. Saat `lunas`: `pendaftaran.status='terdaftar'` + notifikasi user & admin (sekali).
+- **Admin**: `admin/detail_pendaftaran.php` menampilkan metode + order_id + transaction_id + payment_type + status transaksi untuk pembayaran gateway. Tombol verifikasi manual hanya muncul untuk `metode='manual'`.
+- **Uji** (item 18): pemetaan 8 status OK; `pembayaran_terapkan_notif` idempoten (notif kedua identik -> `changed=false`, tidak ada notifikasi ganda); downgrade `lunas`->`expire` ditolak; nominal salah ditolak; dengan gateway non-aktif semua halaman tetap render & alur manual utuh; webhook tanpa keys -> 503. **Uji sandbox penuh (kartu uji + webhook) menunggu kredensial user** — instruksi di `SETUP_MIDTRANS.md`.
