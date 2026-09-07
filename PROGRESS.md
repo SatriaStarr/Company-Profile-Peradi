@@ -223,3 +223,34 @@ Subfolder: galeri, layanan, pembayaran, peraturan, qris, sertifikasi, sertifikat
 - IDOR: semua query sisi user difilter `id_user`. Cek role: semua halaman admin (kecuali `index.php` yang hanya redirect).
 - SQLi login admin: percobaan `x' OR '1'='1` -> notfound (prepared statement).
 - Data uji dibersihkan; DB kembali ke kondisi awal (5 user, 2 pendaftaran, 3 notifikasi, 336 advokat).
+
+---
+
+## Review "dosen pembimbing" + fitur tambahan (2026-09-08)
+
+Peninjauan menyeluruh terhadap sistem yang berjalan, lalu menambah fitur yang masih kurang untuk sebuah "Sistem Informasi Manajemen":
+
+### Baru: Verifikasi keaslian sertifikat (publik)
+- `cek_sertifikat.php` (root) — halaman publik tanpa login. Masukkan nomor sertifikat -> tampil nama pemegang, jenis sertifikasi, hasil ujian, tanggal terbit. NIK **disamarkan sebagian** demi privasi. Query prepared statement.
+- `header.php` — tautan menu **"Cek Sertifikat"** di navbar. Sekalian memperbaiki markup `<li>` menu Login yang rusak (tag `<li>`/`<a>` bersarang salah).
+
+### Baru: Modul Laporan & Rekapitulasi (admin)
+- `admin/laporan.php` — rekap **pendaftaran per status & per bulan**, **pembayaran** (jumlah transaksi + nilai per status, total pemasukan terverifikasi/lunas), **hasil ujian & sertifikat**, **keanggotaan advokat**. Filter **rentang tanggal**. Tombol **Cetak** (CSS `@media print`, tanpa sidebar) & **Unduh CSV** (BOM UTF-8).
+- `admin/partials/sidebar.php` — menu **"Laporan"** (+ entry di `$__active_map`).
+
+### Ditingkatkan: Dashboard peserta
+- `user/dashboard.php` — kartu **Status Pembayaran**; **progress tracker** 5 langkah (Berkas Dikirim -> Diverifikasi -> Pembayaran -> Terdaftar -> Selesai) dengan penanda langkah selesai/aktif; blok aksi **"Lakukan Pembayaran"** (bila belum bayar) & **"Unduh Sertifikat"** (bila sudah terbit).
+
+### Bug fix
+- **`admin/detail_pendaftaran.php` — input hasil ujian menyimpan `''`**: form mengirim `status_lulus` bernilai `lulus`/`tidak_lulus`/`''`, sedangkan kolom `hasil.status_lulus` adalah `enum('Lulus','Tidak Lulus','Belum Diumumkan')`. Akibat: MySQL non-strict menyimpan `''` -> hasil tidak pernah tampil ke peserta. Diperbaiki: handler memetakan input ke nilai enum, `<select>` memakai value enum + preselect nilai tersimpan. Diuji via HTTP: tersimpan `Lulus`.
+
+### Uji
+- `php -l` seluruh file berubah: 0 error. Semua halaman baru/berubah dirender via Apache (login admin & peserta) tanpa error/warning.
+- `cek_sertifikat.php`: nomor valid -> "Terverifikasi"; nomor asal -> "Tidak Ditemukan".
+- `admin/laporan.php`: HTML + ekspor CSV OK; filter tanggal OK.
+- `user/dashboard.php`: progress tracker + blok sertifikat tampil untuk peserta yang lulus.
+
+### Data demo & dokumentasi laporan
+- Data contoh untuk BAB IV Laporan TA (4 peserta `*.example.com` di berbagai status + 3 pengumuman + berkas placeholder di `uploads/`) dimasukkan agar screenshot lengkap.
+- **`database/hapus_data_demo.sql`** — hapus seluruh data demo tersebut untuk mengembalikan DB ke kondisi bersih.
+- 22 screenshot sistem (`laporan/gambar/bab4_*.png`) untuk BAB IV. `laporan/` gitignored.
