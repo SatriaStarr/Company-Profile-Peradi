@@ -49,12 +49,26 @@ if ($chk = $conn->query("SHOW TABLES LIKE '$tbl'")) {
 }
 
 $berkas_map = $jenis === 'UPA'
-    ? ['foto_ktp' => 'Foto KTP', 'tanda_tangan' => 'Tanda Tangan']
-    : ['foto_calon_advokat' => 'Pas Foto', 'foto_ijazah' => 'Foto Ijazah', 'foto_ktp' => 'Foto KTP', 'tanda_tangan' => 'Tanda Tangan'];
+    ? [
+        'foto'            => 'Pas Foto',
+        'foto_ktp'        => 'Foto KTP',
+        'foto_ijazah'     => 'Foto Ijazah',
+        'sertifikat_pkpa' => 'Sertifikat PKPA',
+        'tanda_tangan'    => 'Tanda Tangan',
+      ]
+    : [
+        'foto_calon_advokat' => 'Pas Foto',
+        'foto_ijazah'        => 'Foto Ijazah',
+        'foto_ktp'           => 'Foto KTP',
+        'tanda_tangan'       => 'Tanda Tangan',
+      ];
 
 $berkas = [];
 if ($peserta) {
     foreach ($berkas_map as $col => $label) {
+        if (!array_key_exists($col, $peserta)) {
+            continue;
+        }
         $val = trim((string) ($peserta[$col] ?? ''));
         if ($val !== '') {
             $berkas[] = ['label' => $label, 'file' => $val];

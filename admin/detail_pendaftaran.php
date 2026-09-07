@@ -1915,8 +1915,11 @@ if ($peserta_table !== '' && tableExists($conn, $peserta_table)) {
         // peta kolom file -> label yang ramah
         $berkas_map = $jenis_upper === 'UPA'
             ? [
-                'foto_ktp'      => 'Foto KTP',
-                'tanda_tangan'  => 'Tanda Tangan',
+                'foto'            => 'Pas Foto',
+                'foto_ktp'        => 'Foto KTP',
+                'foto_ijazah'     => 'Foto Ijazah',
+                'sertifikat_pkpa' => 'Sertifikat PKPA',
+                'tanda_tangan'    => 'Tanda Tangan',
               ]
             : [
                 'foto_calon_advokat' => 'Pas Foto',
@@ -1926,6 +1929,9 @@ if ($peserta_table !== '' && tableExists($conn, $peserta_table)) {
               ];
 
         foreach ($berkas_map as $col => $label) {
+            if (!array_key_exists($col, $peserta)) {
+                continue;
+            }
             $val = trim((string) ($peserta[$col] ?? ''));
             if ($val !== '') {
                 $berkas[] = ['nama' => $label, 'file' => $val, 'status' => 'Terkirim'];
