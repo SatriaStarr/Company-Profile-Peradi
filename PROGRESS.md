@@ -196,3 +196,16 @@ Subfolder: galeri, layanan, pembayaran, peraturan, qris, sertifikasi, sertifikat
 ## File konfigurasi yang perlu diisi (opsional; sistem jalan tanpa ini)
 - `config/midtrans_keys.local.php`  -> lihat `SETUP_MIDTRANS.md`
 - `config/google_keys.local.php`    -> lihat `SETUP_GOOGLE.md`
+
+---
+
+## Perbaikan tambahan (pasca item 20)
+
+### BUG path upload pendaftaran (bagian dari item 7, ditemukan saat e2e final)
+- `proses_pendaftaran_pkpa.php` / `proses_pendaftaran_upa.php` menyimpan file ke `user/uploads/...` (karena `__DIR__` = folder `user/`), padahal SEMUA kode yang menampilkan (`user/detail_pendaftaran.php`, `admin/detail_pendaftaran.php`) mengarah ke `uploads/...` di ROOT -> semua foto KTP/ijazah/pas foto/tanda tangan peserta 404.
+- Diperbaiki: `__DIR__ . '/' . $folder` -> `__DIR__ . '/../' . $folder`. File existing dipindah ke `uploads/`.
+- `.gitignore`: berkas berisi data pribadi peserta (`uploads/pembayaran|bukti_pembayaran|sertifikat|advokat|foto|ijazah|ktp|tanda_tangan/*`, `uploads/upa/`, `user/uploads/`) tidak lagi di-commit. Struktur folder dijaga via `.gitkeep` + `.htaccess`.
+- Uji ulang e2e UPA+PKPA penuh: file tersimpan di `uploads/` root, dapat diakses (HTTP 200), alur lengkap tetap OK.
+
+## Status akhir
+**20/20 item checklist SELESAI.** Semua halaman (8 publik + 20 admin + 11 user) dirender via `php -S` tanpa error PHP. Alur end-to-end PKPA & UPA diverifikasi (daftar -> berkas -> bayar manual/gateway -> verifikasi -> hasil -> sertifikat -> notifikasi). Payment gateway Midtrans & Login Google siap-pakai begitu kredensial diisi (`SETUP_MIDTRANS.md`, `SETUP_GOOGLE.md`).
