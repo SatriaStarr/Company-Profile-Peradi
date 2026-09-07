@@ -611,6 +611,17 @@ if (
             ?? ''
         );
 
+    /* normalisasi ke nilai enum kolom hasil.status_lulus
+       ('Lulus','Tidak Lulus','Belum Diumumkan') — terima juga
+       nilai lama 'lulus'/'tidak_lulus' dari form */
+    $map_lulus = [
+        'lulus'          => 'Lulus',
+        'Lulus'          => 'Lulus',
+        'tidak_lulus'    => 'Tidak Lulus',
+        'Tidak Lulus'    => 'Tidak Lulus',
+    ];
+    $status_lulus = $map_lulus[$status_lulus] ?? 'Belum Diumumkan';
+
     $catatan =
         trim(
             $_POST['catatan']
@@ -4321,28 +4332,22 @@ td {
                 class="form-control"
             >
 
-                <option value="">
+                <option value="Belum Diumumkan"
+                    <?= in_array($status_lulus, ['', 'Belum Diumumkan'], true) ? 'selected' : '' ?>
+                >
                     Belum Diumumkan
                 </option>
 
                 <option
-                    value="lulus"
-                    <?= $status_lulus ===
-                        'lulus'
-                        ? 'selected'
-                        : ''
-                    ?>
+                    value="Lulus"
+                    <?= $status_lulus === 'Lulus' ? 'selected' : '' ?>
                 >
                     Lulus
                 </option>
 
                 <option
-                    value="tidak_lulus"
-                    <?= $status_lulus ===
-                        'tidak_lulus'
-                        ? 'selected'
-                        : ''
-                    ?>
+                    value="Tidak Lulus"
+                    <?= $status_lulus === 'Tidak Lulus' ? 'selected' : '' ?>
                 >
                     Tidak Lulus
                 </option>
