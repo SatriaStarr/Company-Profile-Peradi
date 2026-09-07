@@ -7,6 +7,7 @@ $total_pending = ($q_pending) ? mysqli_fetch_assoc($q_pending)['total'] : 0;
 
 // Proses Tambah/Edit
 if(isset($_POST['simpan'])) {
+    csrf_check();
     $pesan = mysqli_real_escape_string($conn, $_POST['pesan']);
     $icon = mysqli_real_escape_string($conn, $_POST['icon']);
     $is_active = isset($_POST['is_active']) ? 1 : 0;
@@ -26,10 +27,14 @@ if(isset($_POST['simpan'])) {
     exit;
 }
 
-// Proses Hapus
-if(isset($_GET['hapus'])) {
-    $id = (int)$_GET['hapus'];
-    mysqli_query($conn, "DELETE FROM running_text WHERE id=$id");
+// Proses Hapus (POST + CSRF)
+if($_SERVER['REQUEST_METHOD']==='POST' && ($_POST['aksi'] ?? '')==='hapus') {
+    csrf_check();
+    $id = (int)($_POST['id'] ?? 0);
+    if($id>0){
+        $st=mysqli_prepare($conn,'DELETE FROM running_text WHERE id=? LIMIT 1');
+        mysqli_stmt_bind_param($st,'i',$id); mysqli_stmt_execute($st); mysqli_stmt_close($st);
+    }
     header("Location: kelola_running_text.php?pesan=berhasil_hapus");
     exit;
 }
@@ -123,6 +128,7 @@ if(isset($_GET['edit'])) {
         <div class="card">
             <h5 class="mb-3"><?php echo $edit_data ? 'Edit Running Text' : 'Tambah Running Text Baru'; ?></h5>
             <form method="POST">
+                <?= csrf_field() ?>
                 <?php if($edit_data): ?>
                     <input type="hidden" name="id" value="<?php echo $edit_data['id']; ?>">
                 <?php endif; ?>
@@ -130,11 +136,11 @@ if(isset($_GET['edit'])) {
                 <div class="row mb-3">
                     <div class="col-md-9">
                         <label>Pesan <span class="text-danger">*</span></label>
-                        <textarea name="pesan" class="form-control" rows="3" required><?php echo $edit_data['pesan'] ?? ''; ?></textarea>
+                        <textarea name="pesan" class="form-control" rows="3" required><?php echo htmlspecialchars($edit_data['pesan'] ?? '', ENT_QUOTES, 'UTF-8'); ?></textarea>
                     </div>
                     <div class="col-md-3">
                         <label>Icon</label>
-                        <input type="text" name="icon" class="form-control" value="<?php echo $edit_data['icon'] ?? '📢'; ?>" placeholder="📢">
+                        <input type="text" name="icon" class="form-control" value="<?php echo htmlspecialchars($edit_data['icon'] ?? '📢', ENT_QUOTES, 'UTF-8'); ?>" placeholder="📢">
                         <small class="text-muted">Emoji icon</small>
                     </div>
                 </div>
@@ -188,9 +194,9 @@ if(isset($_GET['edit'])) {
                         ?>
                         <tr>
                             <td><?php echo $no++; ?></td>
-                            <td><span style="font-size: 1.5rem;"><?php echo $row['icon']; ?></span></td>
-                            <td><?php echo htmlspecialchars($row['pesan']); ?></td>
-                            <td><span class="badge bg-secondary"><?php echo $row['urutan']; ?></span></td>
+                            <td><span style="font-size: 1.5rem;"><?php echo htmlspecialchars($row['icon'] ?? '', ENT_QUOTES, 'UTF-8'); ?></span></td>
+                            <td><?php echo htmlspecialchars($row['pesan'], ENT_QUOTES, 'UTF-8'); ?></td>
+                            <td><span class="badge bg-secondary"><?php echo (int) $row['urutan']; ?></span></td>
                             <td>
                                 <?php if($row['is_active']): ?>
                                     <span class="badge-active">Aktif</span>
@@ -202,10 +208,12 @@ if(isset($_GET['edit'])) {
                                 <a href="?edit=<?php echo $row['id']; ?>" class="btn btn-warning btn-sm btn-action">
                                     <i class="fa-solid fa-pen"></i>
                                 </a>
-                                <a href="?hapus=<?php echo $row['id']; ?>" class="btn btn-danger btn-sm btn-action" 
-                                   onclick="return confirm('Yakin hapus running text ini?')">
-                                    <i class="fa-solid fa-trash"></i>
-                                </a>
+                                <form method="POST" style="display:inline" onsubmit="return confirm('Yakin hapus running text ini?')">
+                                    <?= csrf_field() ?>
+                                    <input type="hidden" name="aksi" value="hapus">
+                                    <input type="hidden" name="id" value="<?php echo (int)$row['id']; ?>">
+                                    <button type="submit" class="btn btn-danger btn-sm btn-action"><i class="fa-solid fa-trash"></i></button>
+                                </form>
                             </td>
                         </tr>
                         <?php endwhile; ?>

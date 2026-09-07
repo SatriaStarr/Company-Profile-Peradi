@@ -6,8 +6,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-$nama = trim($_POST['nama_lengkap'] ?? '');
-$email = trim($_POST['email'] ?? '');
+$nama     = trim($_POST['nama_lengkap'] ?? '');
+$email    = trim($_POST['email'] ?? '');
 $username = trim($_POST['username'] ?? '');
 $password = $_POST['password'] ?? '';
 
@@ -15,54 +15,54 @@ if ($nama === '' || $email === '' || $username === '' || $password === '') {
     header('Location: register.php?pesan=kosong');
     exit;
 }
-
 if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
     header('Location: register.php?pesan=email');
     exit;
 }
-
+if (!preg_match('/^[A-Za-z0-9._-]{3,50}$/', $username)) {
+    header('Location: register.php?pesan=username');
+    exit;
+}
 if (strlen($password) < 6) {
     header('Location: register.php?pesan=password');
     exit;
 }
 
-$nama_safe = mysqli_real_escape_string($conn, $nama);
-$email_safe = mysqli_real_escape_string($conn, $email);
-$username_safe = mysqli_real_escape_string($conn, $username);
-
-$cek_username = mysqli_query(
-    $conn,
-    "SELECT id_user FROM users WHERE username = '$username_safe' LIMIT 1"
-);
-
-if ($cek_username && mysqli_num_rows($cek_username) > 0) {
+/* username unik */
+$st = $conn->prepare('SELECT id_user FROM users WHERE username = ? LIMIT 1');
+$st->bind_param('s', $username);
+$st->execute();
+if ($st->get_result()->fetch_assoc()) {
+    $st->close();
     header('Location: register.php?pesan=username');
     exit;
 }
+$st->close();
 
-$cek_email = mysqli_query(
-    $conn,
-    "SELECT id_user FROM users WHERE email = '$email_safe' LIMIT 1"
-);
-
-if ($cek_email && mysqli_num_rows($cek_email) > 0) {
+/* email unik */
+$st = $conn->prepare('SELECT id_user FROM users WHERE email = ? LIMIT 1');
+$st->bind_param('s', $email);
+$st->execute();
+if ($st->get_result()->fetch_assoc()) {
+    $st->close();
     header('Location: register.php?pesan=email_terdaftar');
     exit;
 }
+$st->close();
 
-$password_hash = password_hash($password, PASSWORD_DEFAULT);
-$password_safe = mysqli_real_escape_string($conn, $password_hash);
+$hash = password_hash($password, PASSWORD_DEFAULT);
 
-$query = mysqli_query(
-    $conn,
+$st = $conn->prepare(
     "INSERT INTO users (username, email, password, nama_lengkap, role, status)
-     VALUES ('$username_safe', '$email_safe', '$password_safe', '$nama_safe', 'user', 'active')"
+     VALUES (?, ?, ?, ?, 'user', 'active')"
 );
+$st->bind_param('ssss', $username, $email, $hash, $nama);
 
-if (!$query) {
-    die('Gagal membuat akun: ' . mysqli_error($conn));
+if (!$st->execute()) {
+    $st->close();
+    die('Gagal membuat akun.');
 }
+$st->close();
 
 header('Location: login.php?pesan=sukses_regis');
 exit;
-?>

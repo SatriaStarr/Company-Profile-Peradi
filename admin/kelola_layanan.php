@@ -1,101 +1,112 @@
 <?php
 require_once __DIR__ . '/partials/admin_auth.php';
+require_once __DIR__ . '/../upload_helper.php';
 
-// Hitung Notif (Wajib ada)
-$q_pending = mysqli_query($conn, "SELECT COUNT(*) as total FROM users WHERE status='pending'");
-$total_pending = ($q_pending) ? mysqli_fetch_assoc($q_pending)['total'] : 0;
+$q_pending = mysqli_query($conn, "SELECT COUNT(*) AS total FROM users WHERE status = 'pending'");
+$total_pending = $q_pending ? (int) mysqli_fetch_assoc($q_pending)['total'] : 0;
 
 $success = '';
 $error   = '';
 
-// =======================
-// MODE EDIT
-// =======================
+/* kategori yang diizinkan (sesuaikan dengan opsi di form) */
+$KATEGORI_VALID = ['pkpa', 'upa', 'sumpah'];
+
+/* ---------- MODE EDIT (prefill) ---------- */
 $editData = null;
 if (isset($_GET['edit'])) {
-    $kategori = mysqli_real_escape_string($conn, $_GET['edit']);
-    $q = mysqli_query($conn, "SELECT * FROM layanan WHERE kategori='$kategori' LIMIT 1");
-    $editData = mysqli_fetch_assoc($q);
+    $kat = (string) $_GET['edit'];
+    if ($st = mysqli_prepare($conn, 'SELECT * FROM layanan WHERE kategori = ? LIMIT 1')) {
+        mysqli_stmt_bind_param($st, 's', $kat);
+        mysqli_stmt_execute($st);
+        $editData = mysqli_fetch_assoc(mysqli_stmt_get_result($st));
+        mysqli_stmt_close($st);
+    }
 }
 
-// =======================
-// MODE HAPUS
-// =======================
-if (isset($_GET['hapus'])) {
-    $kategori = mysqli_real_escape_string($conn, $_GET['hapus']);
-
-    // ambil file lama
-    $old = mysqli_query($conn, "SELECT file FROM layanan WHERE kategori='$kategori'");
-    $oldData = mysqli_fetch_assoc($old);
-
-    if (!empty($oldData['file']) && file_exists("../uploads/layanan/" . $oldData['file'])) {
-        unlink("../uploads/layanan/" . $oldData['file']);
+/* ---------- HAPUS (POST + CSRF) ---------- */
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['aksi'] ?? '') === 'hapus') {
+    csrf_check();
+    $kat = (string) ($_POST['kategori'] ?? $_POST['id'] ?? '');
+    if ($st = mysqli_prepare($conn, 'SELECT file FROM layanan WHERE kategori = ? LIMIT 1')) {
+        mysqli_stmt_bind_param($st, 's', $kat);
+        mysqli_stmt_execute($st);
+        $old = mysqli_fetch_assoc(mysqli_stmt_get_result($st));
+        mysqli_stmt_close($st);
     }
-
-    mysqli_query($conn, "DELETE FROM layanan WHERE kategori='$kategori'");
-    header("Location: kelola_layanan.php?pesan=berhasil_hapus");
+    if (!empty($old['file'])) {
+        hapus_upload('uploads/layanan/' . basename($old['file']));
+    }
+    if ($st = mysqli_prepare($conn, 'DELETE FROM layanan WHERE kategori = ? LIMIT 1')) {
+        mysqli_stmt_bind_param($st, 's', $kat);
+        mysqli_stmt_execute($st);
+        mysqli_stmt_close($st);
+    }
+    header('Location: kelola_layanan.php?pesan=berhasil_hapus');
     exit;
 }
 
-// =======================
-// PROSES SIMPAN
-// =======================
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+/* ---------- SIMPAN (tambah / edit) ---------- */
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['aksi'] ?? '') === 'simpan') {
+    csrf_check();
 
-    $kategori  = mysqli_real_escape_string($conn, $_POST['kategori']);
-    $judul     = mysqli_real_escape_string($conn, trim($_POST['judul']));
-    $deskripsi = mysqli_real_escape_string($conn, trim($_POST['deskripsi']));
+    $kategori  = strtolower(trim($_POST['kategori'] ?? ''));
+    $judul     = trim($_POST['judul'] ?? '');
+    $deskripsi = trim($_POST['deskripsi'] ?? '');
 
-    if ($kategori && $judul && $deskripsi) {
-
-        $file_name = null;
-
-        if (!empty($_FILES['file']['name'])) {
-            $file_name = time() . '_' . $_FILES['file']['name'];
-            move_uploaded_file(
-                $_FILES['file']['tmp_name'],
-                '../uploads/layanan/' . $file_name
-            );
+    if (!in_array($kategori, $KATEGORI_VALID, true)) {
+        $error = 'Kategori tidak valid.';
+    } elseif ($judul === '' || $deskripsi === '') {
+        $error = 'Judul dan deskripsi wajib diisi.';
+    } else {
+        $file_baru = null;
+        if (($_FILES['file']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+            try {
+                $file_baru = basename(simpan_upload($_FILES['file'], 'layanan', ['pdf', 'doc'], 5242880, false));
+            } catch (RuntimeException $e) {
+                $error = $e->getMessage();
+            }
         }
 
-        $cek = mysqli_query($conn, "SELECT file FROM layanan WHERE kategori='$kategori' LIMIT 1");
-
-        if (mysqli_num_rows($cek) > 0) {
-            // UPDATE
-            $old = mysqli_fetch_assoc($cek);
-            if ($file_name && $old['file'] && file_exists("../uploads/layanan/" . $old['file'])) {
-                unlink("../uploads/layanan/" . $old['file']);
+        if ($error === '') {
+            /* cek sudah ada? */
+            $ada = null;
+            if ($st = mysqli_prepare($conn, 'SELECT file FROM layanan WHERE kategori = ? LIMIT 1')) {
+                mysqli_stmt_bind_param($st, 's', $kategori);
+                mysqli_stmt_execute($st);
+                $ada = mysqli_fetch_assoc(mysqli_stmt_get_result($st));
+                mysqli_stmt_close($st);
             }
 
-            $file_sql = $file_name ? ", file='$file_name'" : "";
+            if ($ada) {
+                if ($file_baru) {
+                    if (!empty($ada['file'])) {
+                        hapus_upload('uploads/layanan/' . basename($ada['file']));
+                    }
+                    $st = mysqli_prepare($conn, 'UPDATE layanan SET judul = ?, deskripsi = ?, file = ? WHERE kategori = ?');
+                    mysqli_stmt_bind_param($st, 'ssss', $judul, $deskripsi, $file_baru, $kategori);
+                } else {
+                    $st = mysqli_prepare($conn, 'UPDATE layanan SET judul = ?, deskripsi = ? WHERE kategori = ?');
+                    mysqli_stmt_bind_param($st, 'sss', $judul, $deskripsi, $kategori);
+                }
+                mysqli_stmt_execute($st);
+                mysqli_stmt_close($st);
+                header('Location: kelola_layanan.php?pesan=berhasil_edit');
+                exit;
+            }
 
-            mysqli_query(
-                $conn,
-                "UPDATE layanan 
-                 SET judul='$judul', deskripsi='$deskripsi' $file_sql
-                 WHERE kategori='$kategori'"
-            );
-            header("Location: kelola_layanan.php?pesan=berhasil_edit");
-            exit;
-        } else {
-            // INSERT
-            mysqli_query(
-                $conn,
-                "INSERT INTO layanan (kategori, judul, deskripsi, file)
-                 VALUES ('$kategori', '$judul', '$deskripsi', '$file_name')"
-            );
-            header("Location: kelola_layanan.php?pesan=berhasil_tambah");
+            $st = mysqli_prepare($conn, 'INSERT INTO layanan (kategori, judul, deskripsi, file) VALUES (?, ?, ?, ?)');
+            mysqli_stmt_bind_param($st, 'ssss', $kategori, $judul, $deskripsi, $file_baru);
+            mysqli_stmt_execute($st);
+            mysqli_stmt_close($st);
+            header('Location: kelola_layanan.php?pesan=berhasil_tambah');
             exit;
         }
-    } else {
-        $error = "Semua field wajib diisi.";
     }
 }
 
-// =======================
-// AMBIL DATA UNTUK TABEL
-// =======================
+/* ---------- DATA TABEL ---------- */
 $layanan = mysqli_query($conn, "SELECT * FROM layanan ORDER BY kategori ASC");
+
 ?>
 
 <!DOCTYPE html>
@@ -560,6 +571,8 @@ $layanan = mysqli_query($conn, "SELECT * FROM layanan ORDER BY kategori ASC");
             </h5>
 
             <form method="POST" enctype="multipart/form-data" id="layananForm">
+                <?= csrf_field() ?>
+                <input type="hidden" name="aksi" value="simpan">
                 <?php if ($editData): ?>
                     <input type="hidden" name="kategori" value="<?= htmlspecialchars($editData['kategori']); ?>">
                 <?php endif; ?>
@@ -689,7 +702,7 @@ $layanan = mysqli_query($conn, "SELECT * FROM layanan ORDER BY kategori ASC");
                                         <i class="fa-solid fa-pen"></i> Edit
                                     </a>
                                     <a href="#" class="action-btn btn-delete"
-                                        onclick="openDeleteModal('<?= $row['kategori']; ?>')">
+                                        onclick="openDeleteModal('<?= htmlspecialchars($row['kategori'], ENT_QUOTES); ?>', 'kelola_layanan.php', 'Hapus layanan kategori ini? File terkait ikut dihapus.')">
                                         <i class="fa-solid fa-trash"></i> Hapus
                                     </a>
                                 </td>
@@ -742,19 +755,15 @@ $layanan = mysqli_query($conn, "SELECT * FROM layanan ORDER BY kategori ASC");
     <!-- DELETE MODAL -->
     <?php include 'partials/confirm_delete_modal.php'; ?>
     <script>
-        function openDeleteModal(kategori) {
-            const modal = document.getElementById('confirmDeleteModal');
-            const yesBtn = document.getElementById('confirmDeleteYes');
-
-            if (!modal || !yesBtn) return;
-
-            yesBtn.href = 'kelola_layanan.php?hapus=' + kategori;
-            modal.style.display = 'flex';
-        }
-
-        function closeDeleteModal() {
-            document.getElementById('confirmDeleteModal').style.display = 'none';
-        }
+        /* set action=hapus untuk modal bersama */
+        document.getElementById('confirmDeleteForm').addEventListener('submit', function () {
+            var f = this;
+            if (!f.querySelector('[name=aksi]')) {
+                var a = document.createElement('input');
+                a.type = 'hidden'; a.name = 'aksi'; a.value = 'hapus';
+                f.appendChild(a);
+            }
+        });
     </script>
 
 </body>

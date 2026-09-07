@@ -1,6 +1,7 @@
 <?php
 session_start();
 include 'koneksi.php';
+require_once __DIR__ . '/partials/csrf.php';
 
 // 1. Cek Login
 if (!isset($_SESSION['status_login']) || $_SESSION['status_login'] != true) {
@@ -8,8 +9,8 @@ if (!isset($_SESSION['status_login']) || $_SESSION['status_login'] != true) {
     exit;
 }
 
-if (!in_array($_SESSION['role'] ?? '', ['admin', 'super_admin'], true)) {
-    header("Location: index.php?pesan=no_access");
+if (($_SESSION['role'] ?? '') !== 'super_admin') {
+    header("Location: dashboard.php?pesan=no_access");
     exit;
 }
 
@@ -281,17 +282,25 @@ $total_pending = ($q_pending) ? mysqli_fetch_assoc($q_pending)['total'] : 0;
                                     <td><?php echo date('d M Y', strtotime($row['created_at'])); ?></td>
                                     <td><span class="badge-status bg-pending">Menunggu</span></td>
                                     <td>
-                                        <a href="proses_verifikasi.php?id=<?php echo $id_user; ?>&aksi=terima"
-                                            class="btn-action btn-terima"
-                                            onclick="return confirm('Yakin ingin menerima?')">
-                                            <i class="fa-solid fa-check"></i> Terima
-                                        </a>
+                                        <form method="POST" action="proses_verifikasi.php" style="display:inline"
+                                              onsubmit="return confirm('Setujui akun admin ini?')">
+                                            <?= csrf_field() ?>
+                                            <input type="hidden" name="id" value="<?php echo (int) $id_user; ?>">
+                                            <input type="hidden" name="aksi" value="terima">
+                                            <button type="submit" class="btn-action btn-terima">
+                                                <i class="fa-solid fa-check"></i> Terima
+                                            </button>
+                                        </form>
 
-                                        <a href="proses_verifikasi.php?id=<?php echo $id_user; ?>&aksi=tolak"
-                                            class="btn-action btn-tolak"
-                                            onclick="return confirm('Yakin ingin menolak?')">
-                                            <i class="fa-solid fa-xmark"></i> Tolak
-                                        </a>
+                                        <form method="POST" action="proses_verifikasi.php" style="display:inline"
+                                              onsubmit="return confirm('Tolak &amp; hapus pendaftaran admin ini?')">
+                                            <?= csrf_field() ?>
+                                            <input type="hidden" name="id" value="<?php echo (int) $id_user; ?>">
+                                            <input type="hidden" name="aksi" value="tolak">
+                                            <button type="submit" class="btn-action btn-tolak">
+                                                <i class="fa-solid fa-xmark"></i> Tolak
+                                            </button>
+                                        </form>
                                     </td>
                                 </tr>
                         <?php

@@ -23,6 +23,9 @@ function upload_ext_map(): array
         'image/png'        => 'png',
         'image/webp'       => 'webp',
         'application/pdf'  => 'pdf',
+        'application/msword' => 'doc',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx',
+        'application/zip'  => 'docx', // .docx sering terdeteksi sebagai zip oleh finfo
     ];
 }
 
@@ -69,10 +72,24 @@ function simpan_upload(
     foreach ($map as $m => $ext) {
         $isImage = str_starts_with($m, 'image/');
         $isPdf   = $m === 'application/pdf';
+        $isDoc   = in_array($m, [
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/zip',
+        ], true);
         if (($isImage && in_array('image', $allow, true)) ||
-            ($isPdf && in_array('pdf', $allow, true))) {
+            ($isPdf && in_array('pdf', $allow, true)) ||
+            ($isDoc && in_array('doc', $allow, true))) {
             $allowed_mimes[$m] = $ext;
         }
+    }
+
+    // gate sekunder: ekstensi asli file juga harus masuk akal
+    $orig_ext = strtolower(pathinfo($file['name'] ?? '', PATHINFO_EXTENSION));
+    $sane_ext = array_unique(array_values($allowed_mimes));
+    if ($orig_ext !== '' && !in_array($orig_ext, $sane_ext, true)
+        && !($orig_ext === 'jpeg' && in_array('jpg', $sane_ext, true))) {
+        throw new RuntimeException('Ekstensi file tidak sesuai. Diperbolehkan: ' . implode(', ', $sane_ext) . '.');
     }
 
     if (!isset($allowed_mimes[$mime])) {

@@ -3,6 +3,7 @@
 session_start();
 
 require_once __DIR__ . '/koneksi.php';
+require_once __DIR__ . '/partials/csrf.php';
 
 
 /*
@@ -117,6 +118,13 @@ $table_exists =
 | PROSES UBAH STATUS
 |--------------------------------------------------------------------------
 */
+
+if (
+    $_SERVER['REQUEST_METHOD'] === 'POST' &&
+    isset($_POST['aksi'])
+) {
+    csrf_check();
+}
 
 if (
     $_SERVER['REQUEST_METHOD'] === 'POST' &&
@@ -2778,6 +2786,7 @@ td strong {
                                                     display:inline;
                                                 "
                                             >
+                                                <?= csrf_field() ?>
 
                                                 <input
                                                     type="hidden"
@@ -3044,6 +3053,7 @@ td strong {
             method="POST"
             action="data_pendaftaran.php"
         >
+            <?= csrf_field() ?>
 
 
             <input

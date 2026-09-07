@@ -3,6 +3,11 @@
 session_start();
 
 require_once __DIR__ . '/../koneksi.php';
+require_once __DIR__ . '/partials/csrf.php';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrf_check();
+}
 
 
 /*
@@ -3631,6 +3636,7 @@ td {
             $id_pendaftaran
         ); ?>"
     >
+        <?= csrf_field() ?>
 
         <input
             type="hidden"
@@ -4141,6 +4147,7 @@ td {
             $id_pendaftaran
         ); ?>"
     >
+        <?= csrf_field() ?>
 
         <input
             type="hidden"
@@ -4272,6 +4279,7 @@ td {
         ); ?>"
         enctype="multipart/form-data"
     >
+        <?= csrf_field() ?>
 
         <input
             type="hidden"

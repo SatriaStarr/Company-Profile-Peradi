@@ -74,7 +74,7 @@ if (empty($running_texts)) {
 
 $running_texts_json = json_encode(
     $running_texts,
-    JSON_UNESCAPED_UNICODE
+    JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP
 );
 
 ?>
@@ -514,7 +514,7 @@ $page = basename($_SERVER['PHP_SELF']);
 
         <?php
 
-        echo $running_texts[0]['icon'];
+        echo htmlspecialchars($running_texts[0]['icon'] ?? '', ENT_QUOTES, 'UTF-8');
 
         ?>
 
@@ -835,10 +835,14 @@ function changeMessage() {
             messages[idx];
 
 
-        tickerText.innerHTML =
-            msg.icon +
-            ' <strong>INFO PENTING:</strong> ' +
-            msg.pesan;
+        tickerText.textContent = '';
+        const iconSpan = document.createElement('span');
+        iconSpan.textContent = (msg.icon || '') + ' ';
+        const label = document.createElement('strong');
+        label.textContent = 'INFO PENTING: ';
+        const pesanSpan = document.createElement('span');
+        pesanSpan.textContent = msg.pesan || '';
+        tickerText.append(iconSpan, label, pesanSpan);
 
 
         tickerText.classList.remove('hidden');

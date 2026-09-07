@@ -3,6 +3,7 @@
 session_start();
 
 require_once __DIR__ . '/../koneksi.php';
+require_once __DIR__ . '/partials/csrf.php';
 
 
 /*
@@ -80,6 +81,8 @@ if (
     $_SERVER['REQUEST_METHOD'] === 'POST' &&
     isset($_POST['aksi'])
 ) {
+
+    csrf_check();
 
     $aksi =
         $_POST['aksi'];
@@ -891,6 +894,7 @@ td {
         method="POST"
         action="pengumuman.php"
     >
+        <?= csrf_field() ?>
 
         <input
             type="hidden"
@@ -1173,6 +1177,7 @@ td {
                                     );
                                 "
                             >
+                                <?= csrf_field() ?>
 
                                 <input
                                     type="hidden"

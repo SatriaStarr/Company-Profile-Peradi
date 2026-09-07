@@ -1,37 +1,47 @@
 <?php
-session_start();
-require_once __DIR__ . '/../koneksi.php';
+require_once __DIR__ . '/partials/admin_auth.php';
+require_once __DIR__ . '/../notifikasi_helper.php';
 
-if (!isset($_SESSION['status_login']) || $_SESSION['status_login'] !== true) {
-    header('Location: login.php');
+if (!$is_super_admin) {
+    header('Location: dashboard.php?pesan=no_access');
     exit;
 }
 
-if (($_SESSION['role'] ?? '') !== 'super_admin') {
-    header('Location: ../dashboard.php?pesan=no_access');
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('Location: verifikasi_admin.php');
     exit;
 }
+csrf_check();
 
-$id = (int)($_GET['id'] ?? 0);
-$aksi = $_GET['aksi'] ?? '';
+$id   = (int) ($_POST['id'] ?? 0);
+$aksi = $_POST['aksi'] ?? '';
 
-if ($id <= 0) {
-    header('Location: ../verifikasi_admin.php?notif=gagal');
+if ($id <= 0 || $id === $admin_id) {
+    header('Location: verifikasi_admin.php?notif=gagal');
     exit;
 }
 
 if ($aksi === 'terima') {
-    mysqli_query($conn, "UPDATE users SET status = 'active' WHERE id_user = $id AND role = 'admin'");
-    header('Location: ../verifikasi_admin.php?notif=sukses_terima');
+    $st = mysqli_prepare($conn,
+        "UPDATE users SET status = 'active' WHERE id_user = ? AND role = 'admin' AND status = 'pending' LIMIT 1");
+    mysqli_stmt_bind_param($st, 'i', $id);
+    mysqli_stmt_execute($st);
+    $st->close();
+    kirim_notifikasi($conn, $id, 'Akun admin disetujui',
+        'Akun admin Anda telah disetujui. Anda sekarang dapat masuk ke sistem.');
+    header('Location: verifikasi_admin.php?notif=sukses_terima');
     exit;
 }
 
 if ($aksi === 'tolak') {
-    mysqli_query($conn, "DELETE FROM users WHERE id_user = $id AND role = 'admin'");
-    header('Location: ../verifikasi_admin.php?notif=sukses_tolak');
+    $st = mysqli_prepare($conn,
+        "DELETE FROM users WHERE id_user = ? AND role = 'admin' AND status = 'pending' LIMIT 1");
+    mysqli_stmt_bind_param($st, 'i', $id);
+    mysqli_stmt_execute($st);
+    $st->close();
+    header('Location: verifikasi_admin.php?notif=sukses_tolak');
     exit;
 }
 
-header('Location: ../verifikasi_admin.php?notif=gagal');
+header('Location: verifikasi_admin.php?notif=gagal');
 exit;
-?>
