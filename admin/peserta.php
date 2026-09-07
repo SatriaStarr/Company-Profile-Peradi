@@ -1,3 +1,16 @@
-<?php session_start(); require_once __DIR__.'/koneksi.php'; if(!in_array($_SESSION['role']??'', ['admin','super_admin'],true)){header('Location:index.php?pesan=no_access');exit;} function e($v){return htmlspecialchars((string)$v,ENT_QUOTES,'UTF-8');}
-$q=mysqli_query($conn,"SELECT p.*,u.nama_lengkap,u.email,u.username,py.status payment_status,py.jumlah,h.nilai,h.status_lulus FROM pendaftaran p JOIN users u ON u.id_user=p.id_user LEFT JOIN pembayaran py ON py.id_pendaftaran=p.id_pendaftaran LEFT JOIN hasil h ON h.id_pendaftaran=p.id_pendaftaran ORDER BY p.created_at DESC");?>
-<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Peserta Sertifikasi</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"></head><body><?php include __DIR__.'/partials/sidebar.php';?><div style="margin-left:250px;padding:30px"><div class="bg-white p-4 rounded shadow-sm"><h2 style="color:#1e3a8a">Peserta Sertifikasi</h2><div class="table-responsive"><table class="table table-hover"><thead><tr><th>No</th><th>Peserta</th><th>Jenis</th><th>Status</th><th>Bayar</th><th>Hasil</th><th>Aksi</th></tr></thead><tbody><?php $no=1;while($r=mysqli_fetch_assoc($q)):?><tr><td><?=$no++?></td><td><b><?=e($r['nama_lengkap'])?></b><br><small><?=e($r['email'])?></small></td><td><?=e($r['jenis'])?></td><td><?=e(ucwords(str_replace('_',' ',$r['status'])))?></td><td><?=e(ucwords(str_replace('_',' ',$r['payment_status']??'belum_bayar')))?></td><td><?=e($r['status_lulus']??'Belum')?></td><td><a class="btn btn-sm btn-primary" href="detail_peserta.php?id=<?=$r['id_pendaftaran']?>">Kelola</a></td></tr><?php endwhile;?></tbody></table></div></div></div><script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script></body></html>
+<?php
+/*
+ * Halaman "Peserta Sertifikasi" lama sudah digantikan oleh
+ * data_pendaftaran.php (daftar) + detail_pendaftaran.php (detail).
+ * Redirect permanen agar tautan lama tetap berfungsi.
+ */
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
+$id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
+if ($id > 0) {
+    header('Location: detail_pendaftaran.php?id=' . $id, true, 301);
+} else {
+    header('Location: data_pendaftaran.php', true, 301);
+}
+exit;

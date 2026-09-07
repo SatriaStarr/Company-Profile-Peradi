@@ -1,0 +1,59 @@
+# Progress Perbaikan WEB-DPC-PERADI-PONTIANAK
+
+Acuan utama: **database `db_peradi` yang sebenarnya** + kode terbaru. Dokumentasi `.md` lama TIDAK dijadikan acuan bila berbeda.
+
+## Skema database nyata (ringkas)
+
+| Tabel | Kolom penting |
+|---|---|
+| `users` | id_user, username, email, google_id, password, nama_lengkap, role(super_admin/admin/user), status(active/pending/banned), created_at |
+| `pendaftaran` | id_pendaftaran, id_user, **jenis_pendaftaran**(PKPA/UPA), status(menunggu/diproses/diterima/ditolak/selesai), tanggal_daftar, catatan |
+| `pendaftaran_pkpa` | id_pkpa, id_pendaftaran, nama_lengkap, nik, tempat_lahir, tanggal_lahir, pekerjaan, alamat, no_hp, foto_calon_advokat, foto_ijazah, foto_ktp, tanda_tangan, created_at |
+| `pendaftaran_upa` | id_upa, id_pendaftaran, nama_lengkap, nik, tempat_lahir, tanggal_lahir, pekerjaan, alamat, no_hp, foto_ktp, tanda_tangan, created_at |
+| `pembayaran` | id_pembayaran, id_pendaftaran, jumlah, status(belum_bayar/menunggu_verifikasi/lunas/ditolak), **bukti_pembayaran**, tanggal_bayar, created_at |
+| `hasil` | id_hasil, id_pendaftaran, nilai, status_lulus(Lulus/Tidak Lulus/Belum Diumumkan), catatan, created_at |
+| `sertifikat` | id_sertifikat, id_pendaftaran, nomor_sertifikat, file_sertifikat, created_at |
+| `notifikasi` | id_notifikasi, id_user, judul, pesan, is_read, created_at |
+| `pengumuman` | id_pengumuman, judul, isi, tanggal_publish, status(draft/publikasi) |
+| `data_advokat` | id_advokat, nia, nama_lengkap, nik, ... foto_profil, file_ktpa, file_bas, status_keanggotaan |
+
+Folder upload sebenarnya: `uploads/` di ROOT project (bukan di dalam `admin/`).
+Subfolder: galeri, layanan, pembayaran, peraturan, qris, sertifikasi, sertifikat, struktur.
+
+---
+
+## Status checklist
+
+- [x] 1. Sentralisasi sidebar admin
+- [ ] 2. Rapikan Data User
+- [ ] 3. Fitur Pengumuman
+- [ ] 4. Fitur Notifikasi
+- [ ] 5. Audit Data Advokat
+- [ ] 6. Audit Detail Pendaftaran
+- [ ] 7. Perbaiki path upload/file (404)
+- [ ] 8. Keamanan upload file
+- [ ] 9. Keamanan sistem admin & user
+- [ ] 10. Testing end-to-end
+- [ ] 11. Jangan ubah file yang sudah berjalan tanpa alasan
+- [ ] 12. Pakai DB & kode nyata sebagai acuan
+- [ ] 13. Payment Gateway Midtrans Sandbox
+- [ ] 14. Pembayaran manual tetap dipertahankan
+- [ ] 15. Alur Payment Gateway lengkap
+- [ ] 16. Callback/webhook Midtrans
+- [ ] 17. Penyesuaian DB Payment Gateway
+- [ ] 18. Testing pembayaran menyeluruh
+- [ ] 19. Popup konfirmasi logout admin & user
+- [ ] 20. Login dengan Google
+
+---
+
+## Catatan per item
+
+### 1. Sentralisasi sidebar admin — SELESAI
+- Baru: `admin/partials/sidebar.php` = satu komponen sidebar (CSS+HTML+JS), desain mengacu dashboard. Menu: Dashboard, Data Pendaftaran, Data User, Pengumuman, Notifikasi, Data Advokat, Kembali ke Website, Keluar. Ada badge notifikasi belum dibaca + tombol hamburger mobile + highlight menu aktif otomatis.
+- Baru: `admin/partials/admin_auth.php` = guard login/role + helper `e()`, `csrf_field()`, `csrf_check()` bersama (dipakai bertahap di item 9).
+- Submenu lama "Kelola Halaman / Running Text / Verifikasi Admin" DIHAPUS dari sidebar sesuai instruksi. Halaman-halamannya (`galeri.php`, `struktur_pengurus.php`, `peraturan.php`, `kelola_layanan.php`, `kelola_running_text.php`, `verifikasi_admin.php`) TIDAK dihapus, hanya tidak ditautkan.
+- 6 halaman sertifikasi (dashboard, data_pendaftaran, data_user, pengumuman, notifikasi, detail_pendaftaran) diubah: markup `<aside class="sidebar">` inline diganti `include partials/sidebar.php`.
+- 11 halaman CMS lama sudah `include partials/sidebar.php` -> otomatis ikut desain baru.
+- `admin/peserta.php` (duplikat rusak: pakai kolom `p.jenis`/`p.created_at` yang tidak ada, link ke `detail_peserta.php` yang tidak ada) -> diganti redirect 301 ke `data_pendaftaran.php`.
+- Uji: semua halaman admin dirender via `php -S`, semua tampil dengan sidebar, tanpa error PHP.

@@ -1,580 +1,153 @@
 <?php
-$base_admin = '/WEB-DPC-PERADI-PONTIANAK/admin/';
+/*
+|--------------------------------------------------------------------------
+| SIDEBAR ADMIN — KOMPONEN TUNGGAL
+|--------------------------------------------------------------------------
+| Dipakai bersama oleh SEMUA halaman admin. Desain mengacu ke dashboard.
+| Sertakan tepat setelah <body>:
+|
+|     <?php include __DIR__ . '/partials/sidebar.php'; ?>
+|
+| Lalu bungkus konten halaman dengan:  <main class="main"> ... </main>
+|
+| Komponen ini membawa CSS + markup + JS sendiri sehingga tampil konsisten
+| walau halaman tidak punya CSS sidebar.
+*/
 
-// Deteksi halaman aktif
-$current_page = basename($_SERVER['PHP_SELF']);
-
-// Function untuk cek active menu
-function isActive($page) {
-    global $current_page;
-    return ($current_page == $page) ? 'active' : '';
+if (!function_exists('e')) {
+    function e($v): string { return htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8'); }
 }
 
-// Function untuk cek apakah kategori peraturan aktif
-function isPeraturanActive() {
-    global $current_page;
-    return ($current_page == 'peraturan.php') ? true : false;
-}
+$__current = basename($_SERVER['PHP_SELF'] ?? '');
 
-// Function untuk cek apakah submenu layanan aktif
-function isLayananActive() {
-    global $current_page;
-    $layanan_pages = ['layanan_pkpa.php', 'layanan_upa.php', 'layanan_sumpah.php'];
-    return in_array($current_page, $layanan_pages);
-}
+/* halaman yang menandai menu tertentu sebagai aktif */
+$__active_map = [
+    'dashboard.php'          => 'dashboard',
+    'data_pendaftaran.php'   => 'pendaftaran',
+    'detail_pendaftaran.php' => 'pendaftaran',
+    'peserta.php'            => 'pendaftaran',
+    'data_user.php'          => 'user',
+    'pengumuman.php'         => 'pengumuman',
+    'notifikasi.php'         => 'notifikasi',
+    'data_advokat.php'       => 'advokat',
+    'detail_advokat.php'     => 'advokat',
+    'tambah_advokat.php'     => 'advokat',
+    'edit_advokat.php'       => 'advokat',
+];
+$__active = $__active_map[$__current] ?? '';
 
-// Function untuk cek apakah ada menu aktif di Kelola Halaman
-function isKelolaHalamanActive() {
-    global $current_page;
-    $kelola_pages = ['struktur_pengurus.php', 'peraturan.php', 'galeri.php', 'kelola_layanan.php', 
-                     'layanan_pkpa.php', 'layanan_upa.php', 'layanan_sumpah.php'];
-    return in_array($current_page, $kelola_pages);
+/* badge notifikasi admin yang belum dibaca (opsional, aman bila tabel kosong) */
+$__notif_belum = 0;
+if (isset($conn) && $conn instanceof mysqli && !empty($_SESSION['id_user'])) {
+    if ($__q = @mysqli_query($conn, 'SELECT COUNT(*) c FROM notifikasi WHERE id_user = ' . (int) $_SESSION['id_user'] . ' AND is_read = 0')) {
+        $__notif_belum = (int) (mysqli_fetch_assoc($__q)['c'] ?? 0);
+    }
 }
 ?>
-
 <style>
-    /* ========================================
-       SIDEBAR - COMPLETE STYLING
-       Semua CSS yang dibutuhkan untuk sidebar
-       konsisten di SEMUA halaman
-    ======================================== */
+/* ===== SIDEBAR ADMIN (komponen tunggal) ===== */
+.sidebar{position:fixed;left:0;top:0;width:250px;height:100vh;background:#1e3a8a;color:#fff;
+    padding:22px 16px;z-index:200;display:flex;flex-direction:column;overflow-y:auto;
+    font-family:'Montserrat',sans-serif;transition:transform .3s ease}
+.sidebar *{box-sizing:border-box}
+.sidebar .brand{display:flex;align-items:center;gap:12px;padding:10px 8px 24px;
+    border-bottom:1px solid rgba(255,255,255,.15);margin-bottom:18px}
+.sidebar .brand i{font-size:30px;color:#dea057}
+.sidebar .brand-text h2{font-size:19px;font-weight:800;margin:0;line-height:1}
+.sidebar .brand-text span{color:#dea057;font-size:10px;letter-spacing:2px;display:block;margin-top:3px}
+.sidebar .menu-title{font-size:10px;color:rgba(255,255,255,.55);text-transform:uppercase;
+    letter-spacing:1px;margin:16px 10px 8px}
+.sidebar .menu{list-style:none;margin:0;padding:0}
+.sidebar .menu li{margin-bottom:5px}
+.sidebar .menu a{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:8px;
+    color:#fff;text-decoration:none;font-size:13px;font-weight:600;transition:.25s}
+.sidebar .menu a:hover,.sidebar .menu a.active{background:#152c69;color:#dea057}
+.sidebar .menu a i{width:20px;text-align:center;font-size:14px}
+.sidebar .menu a .badge{margin-left:auto;background:#ef4444;color:#fff;font-size:10px;
+    font-weight:700;padding:2px 7px;border-radius:10px;min-width:18px;text-align:center}
+.sidebar .menu a.active .badge{background:#dea057;color:#152c69}
+.sidebar .sidebar-spacer{flex:1}
+.sidebar .logout-link{color:#fecaca;border-top:1px solid rgba(255,255,255,.12);
+    margin-top:14px;padding-top:14px}
+.sidebar .logout-link a{color:#fecaca}
+.sidebar .logout-link a:hover{background:rgba(239,68,68,.15);color:#fff}
 
-    /* ===== SIDEBAR CONTAINER ===== */
-    .sidebar {
-        width: 250px;
-        height: 100vh;
-        position: fixed;
-        top: 0;
-        left: 0;
-        background-color: #1e3a8a;
-        color: white;
-        display: flex;
-        flex-direction: column;
-        overflow-y: auto;
-        box-sizing: border-box;
-        z-index: 100;
-        transition: transform 0.3s ease;
-    }
+/* tombol hamburger (mobile) */
+.sidebar-toggle{display:none;position:fixed;top:16px;left:16px;z-index:201;width:44px;height:44px;
+    border:none;border-radius:9px;background:#1e3a8a;color:#fff;font-size:18px;cursor:pointer}
+.sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:199}
 
-    /* Hilangkan scrollbar default tapi tetap bisa scroll */
-    .sidebar::-webkit-scrollbar {
-        width: 6px;
-    }
-
-    .sidebar::-webkit-scrollbar-track {
-        background: rgba(255, 255, 255, 0.05);
-    }
-
-    .sidebar::-webkit-scrollbar-thumb {
-        background: rgba(222, 160, 87, 0.5);
-        border-radius: 10px;
-    }
-
-    .sidebar::-webkit-scrollbar-thumb:hover {
-        background: #dea057;
-    }
-
-    /* Reset untuk semua elemen dalam sidebar */
-    .sidebar * {
-        box-sizing: border-box;
-    }
-
-    .sidebar ul {
-        margin: 0;
-        padding: 0;
-    }
-
-    .sidebar li {
-        list-style: none;
-    }
-
-    .sidebar hr {
-        margin-left: 0;
-        margin-right: 0;
-    }
-
-    /* ===== LOGO SECTION ===== */
-    .logo-section {
-        padding: 20px;
-        display: flex;
-        align-items: center;
-        gap: 15px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        background: rgba(0, 0, 0, 0.1);
-    }
-
-    .logo-section i {
-        font-size: 2rem;
-        color: #dea057;
-    }
-
-    .logo-text h2 {
-        font-size: 1.4rem;
-        font-weight: 800;
-        margin: 0;
-        line-height: 1;
-        color: white;
-        letter-spacing: 0.5px;
-    }
-
-    .logo-text span {
-        font-size: 0.75rem;
-        letter-spacing: 1px;
-        color: #dea057;
-        font-weight: 500;
-        display: block;
-        margin-top: 2px;
-    }
-
-    /* ===== NAVIGATION LINKS ===== */
-    .nav-links {
-        list-style: none;
-        padding: 15px 0;
-        margin: 0;
-        flex: 1;
-        overflow-y: auto;
-    }
-
-    .nav-links::-webkit-scrollbar {
-        width: 5px;
-    }
-
-    .nav-links::-webkit-scrollbar-track {
-        background: rgba(255, 255, 255, 0.03);
-    }
-
-    .nav-links::-webkit-scrollbar-thumb {
-        background: rgba(222, 160, 87, 0.4);
-        border-radius: 10px;
-    }
-
-    /* Styling Link Menu */
-    .nav-links li a {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 12px 25px;
-        color: rgba(255, 255, 255, 0.8);
-        text-decoration: none;
-        font-size: 0.9rem;
-        font-weight: 500;
-        transition: all 0.3s ease;
-        border-left: 4px solid transparent;
-        cursor: pointer;
-    }
-
-    .nav-links li a span {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .nav-links li a span i {
-        width: 20px;
-        text-align: center;
-    }
-
-    .nav-links li a:hover,
-    .nav-links li.active > a {
-        background-color: #152c69;
-        color: white;
-        border-left-color: #dea057;
-    }
-
-    /* ===== BADGE NOTIFIKASI ===== */
-    .badge,
-    .badge-notif {
-        background: #ef4444;
-        color: white;
-        font-size: 0.7rem;
-        padding: 2px 6px;
-        border-radius: 10px;
-        font-weight: 600;
-        margin-left: auto;
-        display: inline-block;
-        min-width: 18px;
-        text-align: center;
-    }
-
-    /* ===== DROPDOWN MENU ===== */
-    .dropdown-item > a {
-        justify-content: space-between;
-    }
-
-    /* Icon panah dropdown */
-    .arrow {
-        transition: transform 0.3s ease;
-        font-size: 0.75rem;
-        margin-left: 10px;
-    }
-
-    .rotate {
-        transform: rotate(180deg);
-    }
-
-    /* ===== SUBMENU (Level 1) ===== */
-    .submenu {
-        list-style: none;
-        padding: 0;
-        display: none;
-        background-color: #15204a;
-        max-height: 400px;
-        overflow-y: auto;
-    }
-
-    /* Scrollbar untuk submenu */
-    .submenu::-webkit-scrollbar {
-        width: 5px;
-    }
-
-    .submenu::-webkit-scrollbar-track {
-        background: #0f1633;
-    }
-
-    .submenu::-webkit-scrollbar-thumb {
-        background: #dea057;
-        border-radius: 10px;
-    }
-
-    .submenu::-webkit-scrollbar-thumb:hover {
-        background: #c88a3f;
-    }
-
-    .submenu li a {
-        padding-left: 45px;
-        font-size: 0.85rem;
-        border-left: none;
-    }
-
-    .submenu li a:hover,
-    .submenu li.active > a {
-        background-color: #1e2d63;
-        border-left: 4px solid #dea057;
-    }
-
-    /* ===== SUB-SUBMENU (Level 2) ===== */
-    .sub-submenu {
-        list-style: none;
-        padding: 0;
-        display: none;
-        background-color: #0f1633;
-    }
-
-    .sub-submenu li a {
-        padding-left: 65px;
-        font-size: 0.8rem;
-        opacity: 0.85;
-    }
-
-    .sub-submenu li a:hover,
-    .sub-submenu li.active a {
-        opacity: 1;
-        background-color: #15204a;
-        border-left: 4px solid #dea057;
-    }
-
-    /* Class untuk menampilkan menu via JS */
-    .show-menu {
-        display: block !important;
-    }
-
-    /* ===== SECTION DIVIDER ===== */
-    .nav-links hr {
-        border: 0;
-        border-top: 1px solid rgba(255, 255, 255, 0.1);
-        margin: 10px 20px;
-    }
-
-    /* ===== MENU CATEGORY LABEL ===== */
-    .nav-links > li[style*="padding"] {
-        padding: 5px 25px;
-        font-size: 0.65rem;
-        color: #dea057;
-        text-transform: uppercase;
-        font-weight: 700;
-        letter-spacing: 1px;
-        margin-top: 5px;
-    }
-
-    /* ===== LOGOUT SECTION ===== */
-    .logout-section {
-        padding: 20px;
-        border-top: 1px solid rgba(255, 255, 255, 0.1);
-        background: rgba(0, 0, 0, 0.1);
-    }
-
-    .logout-section a {
-        color: #ef4444;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        font-weight: 600;
-        text-decoration: none;
-        padding: 10px 15px;
-        border-radius: 8px;
-        transition: all 0.3s ease;
-        font-size: 0.9rem;
-    }
-
-    .logout-section a:hover {
-        background: rgba(239, 68, 68, 0.1);
-        color: #ffadad;
-        transform: translateX(5px);
-    }
-
-    .logout-section a i {
-        font-size: 1rem;
-    }
-
-    /* ===== RESPONSIVE ===== */
-    @media (max-width: 768px) {
-        .sidebar {
-            transform: translateX(-100%);
-        }
-
-        .sidebar.active {
-            transform: translateX(0);
-        }
-    }
-
-    /* ===== ACTIVE STATE ENHANCEMENT ===== */
-    .nav-links li.active > a {
-        font-weight: 600;
-        box-shadow: inset 0 0 20px rgba(222, 160, 87, 0.1);
-    }
-
-    /* ===== SMOOTH TRANSITIONS ===== */
-    .nav-links li a,
-    .submenu,
-    .sub-submenu,
-    .arrow {
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    /* ===== HOVER EFFECTS ===== */
-    .nav-links li:not(.active) a:hover {
-        padding-left: 28px;
-    }
-
-    /* ===== FOCUS STATES (Accessibility) ===== */
-    .nav-links li a:focus {
-        outline: 2px solid #dea057;
-        outline-offset: -2px;
-    }
+@media(max-width:900px){
+    .sidebar{transform:translateX(-100%)}
+    .sidebar.open{transform:translateX(0)}
+    .sidebar-toggle{display:block}
+    .sidebar-backdrop.show{display:block}
+    .main{margin-left:0 !important}
+}
 </style>
 
-<div class="sidebar">
-    <!-- LOGO SECTION -->
-    <div class="logo-section">
+<button class="sidebar-toggle" id="sidebarToggle" aria-label="Menu">
+    <i class="fa-solid fa-bars"></i>
+</button>
+<div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+<aside class="sidebar" id="adminSidebar">
+
+    <div class="brand">
         <i class="fa-solid fa-scale-balanced"></i>
-        <div class="logo-text">
+        <div class="brand-text">
             <h2>PERADI</h2>
-            <span>Data Center</span>
+            <span>DATA CENTER</span>
         </div>
     </div>
 
-    <!-- NAVIGATION LINKS -->
-    <ul class="nav-links">
-    <li class="<?php echo isActive('peserta.php'); ?>"><a href="peserta.php"><span><i class="fa-solid fa-users"></i> Peserta Sertifikasi</span></a></li>
+    <div class="menu-title">Menu Utama</div>
+    <ul class="menu">
+        <li><a href="dashboard.php" class="<?= $__active === 'dashboard' ? 'active' : '' ?>">
+            <i class="fa-solid fa-gauge-high"></i> Dashboard</a></li>
 
+        <li><a href="data_pendaftaran.php" class="<?= $__active === 'pendaftaran' ? 'active' : '' ?>">
+            <i class="fa-solid fa-file-circle-check"></i> Data Pendaftaran</a></li>
 
-        <!-- BACK TO HOME -->
-        <li>
-            <a href="../index.php">
-                <span>
-                    <i class="fa-solid fa-arrow-left"></i>
-                    Layanan Home
-                </span>
-            </a>
-        </li>
+        <li><a href="data_user.php" class="<?= $__active === 'user' ? 'active' : '' ?>">
+            <i class="fa-solid fa-user-group"></i> Data User</a></li>
 
-        <!-- DASHBOARD -->
-        <li class="<?php echo isActive('dashboard.php'); ?>">
-            <a href="dashboard.php">
-                <span>
-                    <i class="fa-solid fa-chart-line"></i>
-                    Dashboard
-                </span>
-            </a>
-        </li>
+        <li><a href="pengumuman.php" class="<?= $__active === 'pengumuman' ? 'active' : '' ?>">
+            <i class="fa-solid fa-bullhorn"></i> Pengumuman</a></li>
 
-        <!-- DIVIDER -->
-        <hr>
-        <li style="padding: 5px 25px; font-size: 0.65rem; color: #dea057; text-transform: uppercase; font-weight: 700; letter-spacing: 1px;">
-            Menu Utama
-        </li>
-
-        <!-- KELOLA HALAMAN (DROPDOWN) -->
-        <li class="dropdown-item">
-            <a onclick="toggleMenu('menu-halaman', this)">
-                <span>
-                    <i class="fa-solid fa-layer-group"></i>
-                    Kelola Halaman
-                </span>
-                <i class="fa-solid fa-chevron-down arrow <?php echo isKelolaHalamanActive() ? 'rotate' : ''; ?>"></i>
-            </a>
-
-            <ul id="menu-halaman" class="submenu <?php echo isKelolaHalamanActive() ? 'show-menu' : ''; ?>">
-
-                <!-- HOME -->
-                <li class="<?php echo isActive('dashboard.php'); ?>">
-                    <a href="dashboard.php">
-                        <span>
-                            <i class="fa-solid fa-house"></i>
-                            Home
-                        </span>
-                    </a>
-                </li>
-
-                <!-- PERATURAN (SUB-DROPDOWN) -->
-                <li class="dropdown-item <?php echo isPeraturanActive() ? 'active' : ''; ?>">
-                    <a onclick="toggleMenu('menu-peraturan', this)">
-                        <span>
-                            <i class="fa-solid fa-book-open"></i>
-                            Peraturan
-                        </span>
-                        <i class="fa-solid fa-chevron-down arrow <?php echo isPeraturanActive() ? 'rotate' : ''; ?>"></i>
-                    </a>
-                    <ul id="menu-peraturan" class="sub-submenu <?php echo isPeraturanActive() ? 'show-menu' : ''; ?>">
-                        <li class="<?php echo (isset($_GET['kategori']) && $_GET['kategori'] == 'uu18') ? 'active' : ''; ?>">
-                            <a href="peraturan.php?kategori=uu18">UU No. 18 Tahun 2003</a>
-                        </li>
-                        <li class="<?php echo (isset($_GET['kategori']) && $_GET['kategori'] == 'kodeetik') ? 'active' : ''; ?>">
-                            <a href="peraturan.php?kategori=kodeetik">Kode Etik Advokat</a>
-                        </li>
-                        <li class="<?php echo (isset($_GET['kategori']) && $_GET['kategori'] == 'ad') ? 'active' : ''; ?>">
-                            <a href="peraturan.php?kategori=ad">Anggaran Dasar</a>
-                        </li>
-                        <li class="<?php echo (isset($_GET['kategori']) && $_GET['kategori'] == 'prt') ? 'active' : ''; ?>">
-                            <a href="peraturan.php?kategori=prt">Peraturan Rumah Tangga</a>
-                        </li>
-                        <li class="<?php echo (isset($_GET['kategori']) && $_GET['kategori'] == 'magang') ? 'active' : ''; ?>">
-                            <a href="peraturan.php?kategori=magang">Peraturan Magang</a>
-                        </li>
-                        <li class="<?php echo (isset($_GET['kategori']) && $_GET['kategori'] == 'keanggotaan') ? 'active' : ''; ?>">
-                            <a href="peraturan.php?kategori=keanggotaan">Peraturan Keanggotaan</a>
-                        </li>
-                        <li class="<?php echo (isset($_GET['kategori']) && $_GET['kategori'] == 'perpindahan') ? 'active' : ''; ?>">
-                            <a href="peraturan.php?kategori=perpindahan">Peraturan Perpindahan</a>
-                        </li>
-                    </ul>
-                </li>
-
-                <!-- STRUKTUR -->
-                <li class="<?php echo isActive('struktur_pengurus.php'); ?>">
-                    <a href="struktur_pengurus.php">
-                        <span>
-                            <i class="fa-solid fa-sitemap"></i>
-                            Struktur
-                        </span>
-                    </a>
-                </li>
-
-                <!-- KELOLA LAYANAN -->
-                <li class="<?php echo isActive('kelola_layanan.php'); ?>">
-                    <a href="kelola_layanan.php">
-                        <span>
-                            <i class="fa-solid fa-pen-to-square"></i>
-                            Kelola Layanan
-                        </span>
-                    </a>
-                </li>
-
-                <!-- LAYANAN (SUB-DROPDOWN) -->
-                <li class="dropdown-item">
-                    <a onclick="toggleMenu('menu-layanan', this)">
-                        <span>
-                            <i class="fa-solid fa-hand-holding-heart"></i>
-                            Layanan
-                        </span>
-                        <i class="fa-solid fa-chevron-down arrow <?php echo isLayananActive() ? 'rotate' : ''; ?>"></i>
-                    </a>
-                    <ul id="menu-layanan" class="sub-submenu <?php echo isLayananActive() ? 'show-menu' : ''; ?>">
-                        <li class="<?php echo isActive('layanan_pkpa.php'); ?>">
-                            <a href="layanan_pkpa.php">PKPA</a>
-                        </li>
-                        <li class="<?php echo isActive('layanan_upa.php'); ?>">
-                            <a href="layanan_upa.php">UPA</a>
-                        </li>
-                        <li class="<?php echo isActive('layanan_sumpah.php'); ?>">
-                            <a href="layanan_sumpah.php">Pengangkatan & Sumpah</a>
-                        </li>
-                    </ul>
-                </li>
-
-                <!-- GALERI -->
-                <li class="<?php echo isActive('galeri.php'); ?>">
-                    <a href="galeri.php">
-                        <span>
-                            <i class="fa-solid fa-image"></i>
-                            Galeri
-                        </span>
-                    </a>
-                </li>
-
-            </ul>
-        </li>
-
-        <!-- DATA ADVOKAT -->
-        <li class="<?php echo isActive('data_advokat.php'); ?>">
-            <a href="data_advokat.php">
-                <span>
-                    <i class="fa-solid fa-users-viewfinder"></i>
-                    Data Advokat
-                </span>
-            </a>
-        </li>
-
-        <!-- RUNNING TEXT -->
-        <li class="<?php echo isActive('kelola_running_text.php'); ?>">
-            <a href="kelola_running_text.php">
-                <span>
-                    <i class="fa-solid fa-scroll"></i>
-                    Running Text
-                </span>
-            </a>
-        </li>
-
-        <!-- VERIFIKASI ADMIN (DENGAN BADGE) -->
-        <li class="<?php echo isActive('verifikasi_admin.php'); ?>">
-            <a href="verifikasi_admin.php">
-                <span>
-                    <i class="fa-solid fa-user-shield"></i>
-                    Verifikasi Admin
-                </span>
-                <?php if (isset($total_pending) && $total_pending > 0): ?>
-                    <span class="badge"><?php echo $total_pending; ?></span>
-                <?php endif; ?>
-            </a>
-        </li>
-
+        <li><a href="notifikasi.php" class="<?= $__active === 'notifikasi' ? 'active' : '' ?>">
+            <i class="fa-solid fa-bell"></i> Notifikasi
+            <?php if ($__notif_belum > 0): ?><span class="badge"><?= $__notif_belum > 99 ? '99+' : $__notif_belum ?></span><?php endif; ?>
+        </a></li>
     </ul>
 
-    <!-- LOGOUT SECTION -->
-    <div class="logout-section">
-        <a href="logout.php" onclick="return confirm('Yakin ingin keluar?')">
-            <i class="fa-solid fa-right-from-bracket"></i>
-            <span>Logout</span>
-        </a>
-    </div>
-</div>
+    <div class="menu-title">Sistem</div>
+    <ul class="menu">
+        <li><a href="data_advokat.php" class="<?= $__active === 'advokat' ? 'active' : '' ?>">
+            <i class="fa-solid fa-address-card"></i> Data Advokat</a></li>
+        <li><a href="../index.php">
+            <i class="fa-solid fa-arrow-left"></i> Kembali ke Website</a></li>
+    </ul>
+
+    <div class="sidebar-spacer"></div>
+
+    <ul class="menu logout-link">
+        <li><a href="logout.php" id="adminLogoutLink">
+            <i class="fa-solid fa-right-from-bracket"></i> Keluar</a></li>
+    </ul>
+
+</aside>
 
 <script>
-    /**
-     * Toggle Menu Function
-     * Untuk membuka/menutup dropdown menu
-     */
-    function toggleMenu(id, element) {
-        // 1. Ambil elemen menu yang mau dibuka
-        var menu = document.getElementById(id);
-
-        // 2. Toggle class 'show-menu' (Buka/Tutup)
-        menu.classList.toggle("show-menu");
-
-        // 3. Putar icon panah
-        var arrow = element.querySelector(".arrow");
-        if (arrow) {
-            arrow.classList.toggle("rotate");
-        }
-    }
+(function () {
+    var sb = document.getElementById('adminSidebar');
+    var tg = document.getElementById('sidebarToggle');
+    var bd = document.getElementById('sidebarBackdrop');
+    function open(){ sb.classList.add('open'); bd.classList.add('show'); }
+    function close(){ sb.classList.remove('open'); bd.classList.remove('show'); }
+    if (tg) tg.addEventListener('click', function () {
+        sb.classList.contains('open') ? close() : open();
+    });
+    if (bd) bd.addEventListener('click', close);
+})();
 </script>
