@@ -603,11 +603,15 @@ try {
     // 14. DETAIL UPA
     // =================================================
 
+    // nik diisi sama dengan nomor identitas bila KTP
+    $nik_val = ($jenis_identitas === 'KTP') ? $nomor_identitas : null;
+
     $stmt =
         $conn->prepare("
             INSERT INTO pendaftaran_upa
             (
                 id_pendaftaran,
+                nik,
                 nama_lengkap,
                 nama_lengkap_gelar,
                 jenis_identitas,
@@ -647,17 +651,18 @@ try {
             )
             VALUES
             (
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                ?, ?, ?, ?, ?
+                ?, ?, ?, ?
             )
         ");
 
 
     $stmt->bind_param(
-        'issssssssssssssssssssssssisssssssssss',
+        'is' . str_repeat('s', 36),
         $id_pendaftaran,
+        $nik_val,
         $nama_lengkap,
         $nama_lengkap_gelar,
         $jenis_identitas,

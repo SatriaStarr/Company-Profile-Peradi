@@ -33,7 +33,7 @@ Subfolder: galeri, layanan, pembayaran, peraturan, qris, sertifikasi, sertifikat
 - [x] 7. Perbaiki path upload/file (404)
 - [x] 8. Keamanan upload file
 - [x] 9. Keamanan sistem admin & user
-- [ ] 10. Testing end-to-end
+- [x] 10. Testing end-to-end
 - [ ] 11. Jangan ubah file yang sudah berjalan tanpa alasan
 - [ ] 12. Pakai DB & kode nyata sebagai acuan
 - [ ] 13. Payment Gateway Midtrans Sandbox
@@ -134,3 +134,12 @@ Subfolder: galeri, layanan, pembayaran, peraturan, qris, sertifikasi, sertifikat
 - **XSS**: running-text ticker publik (`header.php`) dulu `innerHTML = msg.pesan` + `json_encode` tanpa escape tag -> **XSS via konten admin**. Diperbaiki: `json_encode` + `JSON_HEX_TAG|HEX_APOS|HEX_QUOT|HEX_AMP`, render pakai `textContent`/`createElement`. Output `pesan`/`icon` di admin & publik di-`htmlspecialchars`. Modul lain sudah pakai `e()`/`htmlspecialchars` konsisten.
 - **`proses_verifikasi.php`**: dulu redirect ke `../verifikasi_admin.php` (path salah, di root -> tidak ada). Diperbaiki + notifikasi ke admin yang disetujui.
 - Uji: POST tanpa CSRF -> 419; dengan CSRF -> 302 & data berubah.
+
+### 10. Testing end-to-end — SELESAI
+- **BUG BESAR (pendaftaran UPA)**: `proses_pendaftaran_upa.php` INSERT ke ~26 kolom yang tidak ada di `pendaftaran_upa` -> pendaftaran UPA SELALU GAGAL. Solusi: `database/migrasi_2026_09_07_pendaftaran_upa_lengkap.sql` menambah semua kolom sesuai formulir + `nik`/`pekerjaan` jadi NULL. INSERT dirapikan (38 kolom sinkron) + `nik` diisi dari `nomor_identitas`.
+- **GAP (verifikasi pembayaran)**: `admin/detail_pendaftaran.php` tidak punya tombol verifikasi pembayaran. Ditambah aksi `verifikasi_pembayaran` (Setujui Lunas / Tolak) -> update `pembayaran.status`, set `tanggal_bayar`, dorong `pendaftaran.status='terdaftar'`, kirim notifikasi user.
+- **Alur diuji end-to-end via HTTP (php -S + curl):**
+  - UPA: daftar user -> login -> isi formulir UPA (semua field + 4 file + tanda tangan) -> pendaftaran+pendaftaran_upa+pembayaran terbuat -> upload bukti -> admin lihat detail (NIK, alamat, Foto KTP, Tanda Tangan, Lihat Bukti tampil) -> ubah status -> input hasil (nilai/lulus) -> upload sertifikat (+tanggal_terbit) -> user lihat hasil + unduh sertifikat -> 5 notifikasi user + 2 notifikasi admin. **SEMUA OK, tanpa error.**
+  - PKPA: daftar -> submit (foto_calon_advokat benar) -> bayar Rp 8.000.000 -> upload bukti -> admin verifikasi LUNAS -> pembayaran=lunas, pendaftaran=terdaftar. OK.
+  - Edge: IDOR (user lain akses pendaftaran -> redirect, data tidak bocor); id tidak valid (user & admin -> redirect bersih); upload bukti milik orang lain -> diblok; pendaftaran ganda -> diarahkan ke yang ada, tidak buat baris kedua.
+- Catatan: harga PKPA di alur `proses_pendaftaran_pkpa.php` = Rp 8.000.000, di `proses_pendaftaran.php` generik = Rp 2.500.000 (tidak konsisten; alur pkpa yang dipakai). Tidak diubah — keputusan harga milik DPC.

@@ -517,6 +517,68 @@ if (
 
 /*
 |--------------------------------------------------------------------------
+| PROSES VERIFIKASI PEMBAYARAN (manual/transfer)
+|--------------------------------------------------------------------------
+*/
+
+if (
+    $_SERVER['REQUEST_METHOD'] === 'POST' &&
+    ($_POST['aksi'] ?? '') === 'verifikasi_pembayaran'
+) {
+    $keputusan = $_POST['keputusan'] ?? '';
+    if (!in_array($keputusan, ['lunas', 'ditolak'], true)) {
+        redirectDetail($id_pendaftaran, 'gagal');
+    }
+
+    $tgl = $keputusan === 'lunas' ? date('Y-m-d H:i:s') : null;
+    $stmt = mysqli_prepare(
+        $conn,
+        'UPDATE pembayaran SET status = ?, tanggal_bayar = COALESCE(tanggal_bayar, ?)
+         WHERE id_pendaftaran = ? ORDER BY id_pembayaran DESC LIMIT 1'
+    );
+    mysqli_stmt_bind_param($stmt, 'ssi', $keputusan, $tgl, $id_pendaftaran);
+    $ok = mysqli_stmt_execute($stmt);
+    mysqli_stmt_close($stmt);
+
+    if (!$ok) {
+        redirectDetail($id_pendaftaran, 'gagal');
+    }
+
+    /* jika lunas, dorong status pendaftaran ke "terdaftar" bila masih di tahap pembayaran */
+    if ($keputusan === 'lunas') {
+        mysqli_query(
+            $conn,
+            "UPDATE pendaftaran SET status = 'terdaftar'
+             WHERE id_pendaftaran = " . (int) $id_pendaftaran . "
+             AND status IN ('menunggu_verifikasi','berkas_diperiksa','menunggu_pembayaran','pembayaran_diperiksa')"
+        );
+    }
+
+    /* notifikasi user */
+    $uid_n = 0;
+    if ($su = mysqli_prepare($conn, 'SELECT id_user FROM pendaftaran WHERE id_pendaftaran = ? LIMIT 1')) {
+        mysqli_stmt_bind_param($su, 'i', $id_pendaftaran);
+        mysqli_stmt_execute($su);
+        $uid_n = (int) (mysqli_fetch_assoc(mysqli_stmt_get_result($su))['id_user'] ?? 0);
+        mysqli_stmt_close($su);
+    }
+    if ($uid_n > 0) {
+        require_once __DIR__ . '/../notifikasi_helper.php';
+        if ($keputusan === 'lunas') {
+            kirim_notifikasi($conn, $uid_n, 'Pembayaran diverifikasi',
+                'Pembayaran Anda telah diverifikasi dan dinyatakan LUNAS. Anda resmi terdaftar.');
+        } else {
+            kirim_notifikasi($conn, $uid_n, 'Pembayaran ditolak',
+                'Bukti pembayaran Anda ditolak admin. Silakan unggah ulang bukti pembayaran yang benar.');
+        }
+    }
+
+    redirectDetail($id_pendaftaran, 'status_berhasil');
+}
+
+
+/*
+|--------------------------------------------------------------------------
 | PROSES HASIL UJIAN
 |--------------------------------------------------------------------------
 */
@@ -3950,6 +4012,40 @@ td {
 
                 </div>
 
+            <?php endif; ?>
+
+
+            <?php if (($pembayaran['status'] ?? '') === 'menunggu_verifikasi'): ?>
+                <div class="payment-row" style="border-top:1px dashed #e5e7eb;padding-top:14px;margin-top:6px;">
+                    <div class="payment-label">Verifikasi Pembayaran</div>
+                    <div class="payment-value" style="display:flex;gap:8px;">
+                        <form method="POST" action="detail_pendaftaran.php?id=<?= e($id_pendaftaran) ?>"
+                              onsubmit="return confirm('Setujui pembayaran ini sebagai LUNAS?')">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="aksi" value="verifikasi_pembayaran">
+                            <input type="hidden" name="keputusan" value="lunas">
+                            <button type="submit" class="btn btn-small" style="background:#10b981;">
+                                <i class="fa-solid fa-check"></i> Setujui (Lunas)
+                            </button>
+                        </form>
+                        <form method="POST" action="detail_pendaftaran.php?id=<?= e($id_pendaftaran) ?>"
+                              onsubmit="return confirm('Tolak bukti pembayaran ini?')">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="aksi" value="verifikasi_pembayaran">
+                            <input type="hidden" name="keputusan" value="ditolak">
+                            <button type="submit" class="btn btn-small" style="background:#dc2626;">
+                                <i class="fa-solid fa-xmark"></i> Tolak
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            <?php elseif (($pembayaran['status'] ?? '') === 'lunas'): ?>
+                <div class="payment-row">
+                    <div class="payment-label">Verifikasi Pembayaran</div>
+                    <div class="payment-value" style="color:#166534;font-weight:700;">
+                        <i class="fa-solid fa-circle-check"></i> Sudah diverifikasi LUNAS
+                    </div>
+                </div>
             <?php endif; ?>
 
 
