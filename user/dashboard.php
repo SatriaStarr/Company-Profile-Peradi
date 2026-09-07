@@ -253,7 +253,7 @@ if (
 */
 
 $jenis_pendaftaran =
-    $pendaftaran['jenis']
+    $pendaftaran['jenis_pendaftaran']
     ?? '-';
 
 $jenis_tampil =

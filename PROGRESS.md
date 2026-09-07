@@ -30,7 +30,7 @@ Subfolder: galeri, layanan, pembayaran, peraturan, qris, sertifikasi, sertifikat
 - [x] 4. Fitur Notifikasi
 - [x] 5. Audit Data Advokat
 - [x] 6. Audit Detail Pendaftaran
-- [ ] 7. Perbaiki path upload/file (404)
+- [x] 7. Perbaiki path upload/file (404)
 - [ ] 8. Keamanan upload file
 - [ ] 9. Keamanan sistem admin & user
 - [ ] 10. Testing end-to-end
@@ -104,3 +104,12 @@ Subfolder: galeri, layanan, pembayaran, peraturan, qris, sertifikasi, sertifikat
 - **BUG kolom `pendaftaran_pkpa.foto`**: `proses_pendaftaran_pkpa.php` insert ke kolom `foto` (tidak ada) -> diperbaiki ke `foto_calon_advokat`. (INSERT `pendaftaran_upa` masih tidak sinkron dengan skema — ditangani di item 10.)
 - Uji: detail render id 1 & 2, ubah status jalan.
 - **SISA untuk item 9**: form POST di `detail_pendaftaran.php` belum pakai CSRF.
+
+### 7. Perbaiki path upload/file (404) — SELESAI
+- **`user/detail_pendaftaran.php` sebelumnya FATAL ERROR**: query `SELECT * FROM berkas` (tabel tidak ada) + kolom salah (`py.bukti_bayar`, `p.jenis`, `p.tanggal`, `catatan_admin`, `py.catatan`). Ditulis ulang total: baca kolom nyata (`bukti_pembayaran`, `jenis_pendaftaran`, `tanggal_daftar`, `catatan`), berkas dari `pendaftaran_pkpa`/`pendaftaran_upa`, path file via helper `file_href()`. Link pembayaran -> `pembayaran.php` (transfer bank, sesuai item 14), sertifikat -> `../uploads/sertifikat/<file>`.
+- **`user/upload_berkas.php`**: dulu INSERT ke tabel `berkas` (tidak ada) + `uploads/berkas/`. Kini redirect ke detail (berkas diunggah saat isi formulir pendaftaran).
+- `user/dashboard.php`: `$pendaftaran['jenis']` -> `jenis_pendaftaran` (dulu selalu tampil "-").
+- **File PHP hilang**: audit seluruh `href/action="*.php"` -> hanya `profil.php` yang hilang (dilink dari dashboard user). Dibuat `user/profil.php` (edit nama/email/password, cek email unik, verifikasi password lama).
+- Tidak ditemukan referensi ke file fiktif `detail_pembayaran.php`. `detail_peserta.php` & `hasil_pengumuman.php` sudah diperbaiki di item 1 & 3.
+- Link file CMS admin (`../uploads/galeri|struktur|peraturan|layanan/`) sudah benar (folder ada di root) — tidak diubah.
+- Uji: semua halaman user render tanpa error; detail pendaftaran id 1 & 2 OK.
