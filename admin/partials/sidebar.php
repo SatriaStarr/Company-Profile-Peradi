@@ -132,11 +132,13 @@ if (isset($conn) && $conn instanceof mysqli && !empty($_SESSION['id_user'])) {
     <div class="sidebar-spacer"></div>
 
     <ul class="menu logout-link">
-        <li><a href="logout.php" id="adminLogoutLink">
+        <li><a href="logout.php" id="adminLogoutLink" data-logout>
             <i class="fa-solid fa-right-from-bracket"></i> Keluar</a></li>
     </ul>
 
 </aside>
+
+<?php include __DIR__ . '/../../partials/logout_modal.php'; ?>
 
 <script>
 (function () {

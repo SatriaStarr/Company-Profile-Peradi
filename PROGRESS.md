@@ -42,7 +42,7 @@ Subfolder: galeri, layanan, pembayaran, peraturan, qris, sertifikasi, sertifikat
 - [x] 16. Callback/webhook Midtrans
 - [x] 17. Penyesuaian DB Payment Gateway
 - [x] 18. Testing pembayaran menyeluruh
-- [ ] 19. Popup konfirmasi logout admin & user
+- [x] 19. Popup konfirmasi logout admin & user
 - [ ] 20. Login dengan Google
 
 ---
@@ -162,3 +162,11 @@ Subfolder: galeri, layanan, pembayaran, peraturan, qris, sertifikasi, sertifikat
 - **Helper**: `pembayaran_helper.php` — `pembayaran_terapkan_notif()`, `pembayaran_sinkron_dari_midtrans()`. Saat `lunas`: `pendaftaran.status='terdaftar'` + notifikasi user & admin (sekali).
 - **Admin**: `admin/detail_pendaftaran.php` menampilkan metode + order_id + transaction_id + payment_type + status transaksi untuk pembayaran gateway. Tombol verifikasi manual hanya muncul untuk `metode='manual'`.
 - **Uji** (item 18): pemetaan 8 status OK; `pembayaran_terapkan_notif` idempoten (notif kedua identik -> `changed=false`, tidak ada notifikasi ganda); downgrade `lunas`->`expire` ditolak; nominal salah ditolak; dengan gateway non-aktif semua halaman tetap render & alur manual utuh; webhook tanpa keys -> 503. **Uji sandbox penuh (kartu uji + webhook) menunggu kredensial user** — instruksi di `SETUP_MIDTRANS.md`.
+
+### 19. Popup konfirmasi logout — SELESAI
+- Baru `partials/logout_modal.php` (root): modal "Yakin ingin keluar?" + tombol "Ya, Logout" / "Batal", desain mengikuti website (biru #1e3a8a, Montserrat), animasi, tutup via Esc / klik luar / Batal.
+- Cara pakai: elemen logout diberi atribut `data-logout`; klik dicegat -> tampilkan modal -> "Ya, Logout" meneruskan ke `logout.php`.
+- **Admin**: dimasukkan ke `admin/partials/sidebar.php` -> otomatis di SEMUA halaman admin.
+- **User**: `user/dashboard.php` (satu-satunya halaman user dengan link logout).
+- Mekanisme session/logout TIDAK diubah — hanya konfirmasi sebelum diteruskan.
+- Uji: modal + teks muncul di semua halaman admin & dashboard user.

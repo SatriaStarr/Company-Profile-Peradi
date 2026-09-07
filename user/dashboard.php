@@ -1340,6 +1340,7 @@ body {
 
                 <a
                     href="logout.php"
+                    data-logout
                 >
 
                     <i
@@ -1955,6 +1956,7 @@ body {
 
 </main>
 
+<?php include __DIR__ . '/../partials/logout_modal.php'; ?>
 
 </body>
 
