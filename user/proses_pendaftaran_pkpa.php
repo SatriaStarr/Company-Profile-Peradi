@@ -610,6 +610,14 @@ try {
         'Pendaftaran PKPA berhasil dibuat. Silakan melakukan pembayaran.'
     );
 
+    require_once __DIR__ . '/../notifikasi_helper.php';
+    kirim_notifikasi_admin(
+        $conn,
+        'Pendaftaran PKPA baru',
+        ($_SESSION['nama_lengkap'] ?? ('User #' . $uid))
+            . ' mengajukan pendaftaran PKPA (#' . $id_pendaftaran . '). Perlu verifikasi berkas.'
+    );
+
 
     // =================================================
     // 16. COMMIT

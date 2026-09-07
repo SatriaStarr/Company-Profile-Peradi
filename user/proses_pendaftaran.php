@@ -185,6 +185,14 @@ try {
         'Pendaftaran ' . $jenis . ' berhasil dibuat. Silakan lengkapi berkas dan pembayaran.'
     );
 
+    require_once __DIR__ . '/../notifikasi_helper.php';
+    kirim_notifikasi_admin(
+        $conn,
+        'Pendaftaran ' . $jenis . ' baru',
+        ($_SESSION['nama_lengkap'] ?? ('User #' . $uid))
+            . ' mengajukan pendaftaran ' . $jenis . ' (#' . $id_pendaftaran . '). Perlu verifikasi berkas.'
+    );
+
 
     // =================================================
     // 11. SIMPAN SEMUA PERUBAHAN

@@ -27,7 +27,7 @@ Subfolder: galeri, layanan, pembayaran, peraturan, qris, sertifikasi, sertifikat
 - [x] 1. Sentralisasi sidebar admin
 - [x] 2. Rapikan Data User
 - [x] 3. Fitur Pengumuman
-- [ ] 4. Fitur Notifikasi
+- [x] 4. Fitur Notifikasi
 - [ ] 5. Audit Data Advokat
 - [ ] 6. Audit Detail Pendaftaran
 - [ ] 7. Perbaiki path upload/file (404)
@@ -75,3 +75,10 @@ Subfolder: galeri, layanan, pembayaran, peraturan, qris, sertifikasi, sertifikat
 - Admin `admin/pengumuman.php`: tambah / edit / hapus sudah berjalan (prepared statement) — diverifikasi via HTTP (add/edit/hapus OK). Tidak diubah logikanya, hanya sidebar ikut komponen baru.
 - **Baru `user/pengumuman.php`**: daftar + detail pengumuman untuk user login. Hanya `status = 'publikasi'` yang tampil; akses langsung ke id draft dialihkan. Diverifikasi: draft tidak bocor ke user.
 - `user/dashboard.php`: link rusak "Hasil Pengumuman -> hasil_pengumuman.php" (404) diganti "Pengumuman -> pengumuman.php" di sidebar dan quick-menu.
+
+### 4. Fitur Notifikasi — SELESAI
+- Notifikasi USER dibuat otomatis sudah ada untuk: pendaftaran, upload bukti bayar, ubah status, hasil ujian, sertifikat (diverifikasi di kode).
+- Baru `notifikasi_helper.php` (root): `kirim_notifikasi()`, `kirim_notifikasi_admin()` (broadcast ke semua role admin/super_admin), `hitung_notifikasi_belum_dibaca()`.
+- **Notifikasi ADMIN ditambahkan**: `proses_pendaftaran.php`, `proses_pendaftaran_pkpa.php`, `proses_pendaftaran_upa.php` -> "Pendaftaran baru"; `proses_pembayaran.php` -> "Bukti pembayaran baru". Diuji: broadcast ke 4 akun admin.
+- `user/notifikasi.php` ditulis ulang: snapshot "belum dibaca" sebelum ditandai, highlight item baru, tandai semua dibaca setelah render, hapus per item. (Sebelumnya cuma 1 baris & langsung mark-all-read tanpa indikator.)
+- `admin/notifikasi.php` ditulis ulang: tab "Notifikasi Saya" (default, read/unread berfungsi, mark-read saat dibuka, hapus) + tab "Semua Pengguna" (monitoring + cari). Badge sidebar (item 1) kini bermakna.

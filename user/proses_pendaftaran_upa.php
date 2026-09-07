@@ -749,6 +749,14 @@ try {
         'Pendaftaran UPA berhasil dibuat. Silakan melakukan pembayaran dan menunggu verifikasi.'
     );
 
+    require_once __DIR__ . '/../notifikasi_helper.php';
+    kirim_notifikasi_admin(
+        $conn,
+        'Pendaftaran UPA baru',
+        ($_SESSION['nama_lengkap'] ?? ('User #' . $uid))
+            . ' mengajukan pendaftaran UPA (#' . $id_pendaftaran . '). Perlu verifikasi berkas.'
+    );
+
 
     // =================================================
     // 17. COMMIT

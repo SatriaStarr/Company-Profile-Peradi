@@ -306,6 +306,15 @@ try {
         ' berhasil dikirim dan sedang menunggu verifikasi admin.'
     );
 
+    require_once __DIR__ . '/../notifikasi_helper.php';
+    kirim_notifikasi_admin(
+        $conn,
+        'Bukti pembayaran baru',
+        ($_SESSION['nama_lengkap'] ?? ('User #' . $uid))
+            . ' mengunggah bukti pembayaran ' . $pendaftaran['jenis_pendaftaran']
+            . ' (pendaftaran #' . $id_pendaftaran . '). Perlu verifikasi.'
+    );
+
 
     // =================================================
     // 14. COMMIT
