@@ -745,14 +745,33 @@ $page = basename($_SERVER['PHP_SELF']);
 
 
 
+        <!-- CEK SERTIFIKAT -->
+
+        <li>
+
+            <a
+                href="cek_sertifikat.php"
+                class="<?php
+                    if ($page == 'cek_sertifikat.php') {
+                        echo 'active';
+                    }
+                ?>"
+            >
+
+                Cek Sertifikat
+
+            </a>
+
+        </li>
+
+
+
         <!-- =================================================
              LOGIN
         ================================================== -->
 
-        <li>
+        <li class="dropdown">
 
-                <a
-                    <li class="dropdown">
             <a
                 href="login.php"
                 class="<?php if($page == 'login.php') echo 'active'; ?>"

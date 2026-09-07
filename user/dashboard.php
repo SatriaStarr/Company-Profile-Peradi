@@ -169,6 +169,87 @@ if (
 
 /*
 |--------------------------------------------------------------------------
+| DETAIL PEMBAYARAN, HASIL & SERTIFIKAT (untuk pendaftaran terbaru)
+|--------------------------------------------------------------------------
+*/
+
+$bayar = null;
+$hasil_ujian = null;
+$sertifikat = null;
+
+if ($pendaftaran !== null) {
+
+    $id_p = (int) $pendaftaran['id_pendaftaran'];
+
+    if ($st = mysqli_prepare(
+        $conn,
+        "SELECT pb.jumlah, pb.status AS status_bayar, pb.metode,
+                h.nilai, h.status_lulus,
+                s.nomor_sertifikat, s.file_sertifikat, s.tanggal_terbit
+         FROM pendaftaran p
+         LEFT JOIN pembayaran pb ON pb.id_pendaftaran = p.id_pendaftaran
+         LEFT JOIN hasil h       ON h.id_pendaftaran = p.id_pendaftaran
+         LEFT JOIN sertifikat s  ON s.id_pendaftaran = p.id_pendaftaran
+         WHERE p.id_pendaftaran = ? LIMIT 1"
+    )) {
+        mysqli_stmt_bind_param($st, 'i', $id_p);
+        mysqli_stmt_execute($st);
+        $row = mysqli_fetch_assoc(mysqli_stmt_get_result($st));
+        mysqli_stmt_close($st);
+
+        if ($row) {
+            $bayar = [
+                'jumlah' => $row['jumlah'],
+                'status' => $row['status_bayar'] ?? 'belum_bayar',
+                'metode' => $row['metode'] ?? 'manual',
+            ];
+            if (($row['status_lulus'] ?? null) !== null) {
+                $hasil_ujian = ['nilai' => $row['nilai'], 'status_lulus' => $row['status_lulus']];
+            }
+            if (!empty($row['file_sertifikat'])) {
+                $sertifikat = [
+                    'nomor' => $row['nomor_sertifikat'],
+                    'file'  => $row['file_sertifikat'],
+                    'tanggal_terbit' => $row['tanggal_terbit'],
+                ];
+            }
+        }
+    }
+}
+
+$bayar_label_map = [
+    'belum_bayar' => 'Belum Bayar',
+    'menunggu_verifikasi' => 'Menunggu Verifikasi',
+    'pending' => 'Menunggu Pembayaran',
+    'lunas' => 'Lunas',
+    'ditolak' => 'Ditolak',
+    'kadaluarsa' => 'Kadaluarsa',
+    'dibatalkan' => 'Dibatalkan',
+];
+$bayar_status = $bayar['status'] ?? 'belum_mendaftar';
+$bayar_tampil = $bayar_label_map[$bayar_status] ?? ($pendaftaran ? 'Belum Bayar' : '-');
+$bayar_class = $bayar_status === 'lunas' ? 'success'
+    : (in_array($bayar_status, ['ditolak', 'kadaluarsa', 'dibatalkan'], true) ? 'danger' : 'waiting');
+
+/*
+|--------------------------------------------------------------------------
+| LANGKAH PROGRES PENDAFTARAN
+|--------------------------------------------------------------------------
+*/
+
+$langkah = [
+    'menunggu_verifikasi' => 'Berkas Dikirim',
+    'berkas_diperiksa'    => 'Berkas Diverifikasi',
+    'menunggu_pembayaran' => 'Pembayaran',
+    'terdaftar'           => 'Terdaftar',
+    'selesai'             => 'Selesai',
+];
+$urutan_status = ['menunggu_verifikasi', 'berkas_diperiksa', 'menunggu_pembayaran',
+    'pembayaran_diperiksa', 'terdaftar', 'selesai'];
+
+
+/*
+|--------------------------------------------------------------------------
 | STATUS PENDAFTARAN
 |--------------------------------------------------------------------------
 */
@@ -749,12 +830,80 @@ body {
     display: grid;
 
     grid-template-columns:
-        repeat(3, 1fr);
+        repeat(4, 1fr);
 
     gap: 20px;
 
     margin-bottom: 25px;
 
+}
+
+
+/* =========================================================
+   PROGRES PENDAFTARAN
+========================================================= */
+
+.progress-track {
+    display: flex;
+    justify-content: space-between;
+    margin: 10px 0 28px;
+    position: relative;
+}
+
+.progress-track::before {
+    content: '';
+    position: absolute;
+    top: 14px;
+    left: 6%;
+    right: 6%;
+    height: 3px;
+    background: #e5e7eb;
+    z-index: 0;
+}
+
+.step {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    flex: 1;
+}
+
+.step .dot {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #e5e7eb;
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 8px;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.step.done .dot {
+    background: #16a34a;
+    color: #fff;
+}
+
+.step.current .dot {
+    background: #1e3a8a;
+    color: #fff;
+    box-shadow: 0 0 0 4px rgba(30, 58, 138, .15);
+}
+
+.step small {
+    font-size: 10.5px;
+    color: #64748b;
+    font-weight: 600;
+    display: block;
+    line-height: 1.3;
+}
+
+.step.done small,
+.step.current small {
+    color: #1e3a8a;
 }
 
 
@@ -1559,6 +1708,30 @@ body {
             </div>
 
 
+
+            <!-- STATUS PEMBAYARAN -->
+
+            <div class="card">
+
+                <div class="card-icon">
+
+                    <i class="fa-solid fa-money-check-dollar"></i>
+
+                </div>
+
+                <h3>
+                    Status Pembayaran
+                </h3>
+
+                <strong>
+
+                    <?= e($bayar_tampil); ?>
+
+                </strong>
+
+            </div>
+
+
         </div>
 
 
@@ -1771,6 +1944,68 @@ body {
 
                 </div>
 
+
+
+                <!-- PROGRES -->
+
+                <?php if ($status_pendaftaran !== 'ditolak'): ?>
+                <div style="margin-top:28px;">
+
+                    <?php
+                    $idx_now = array_search($status_pendaftaran, $urutan_status, true);
+                    if ($idx_now === false) {
+                        $idx_now = 0;
+                    }
+                    ?>
+
+                    <div class="progress-track">
+                        <?php $i = 0; foreach ($langkah as $kode => $label):
+                            $pos = array_search($kode, $urutan_status, true);
+                            $cls = $pos < $idx_now ? 'done' : ($pos === $idx_now || ($kode === 'menunggu_pembayaran' && $status_pendaftaran === 'pembayaran_diperiksa') ? 'current' : '');
+                            $i++; ?>
+                            <div class="step <?= $cls ?>">
+                                <div class="dot"><?= $cls === 'done' ? '&check;' : $i ?></div>
+                                <small><?= e($label) ?></small>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+
+                </div>
+                <?php endif; ?>
+
+
+                <!-- AKSI CEPAT: PEMBAYARAN / SERTIFIKAT -->
+
+                <?php if ($bayar && in_array($bayar_status, ['belum_bayar', 'ditolak'], true) && $status_pendaftaran !== 'ditolak'): ?>
+                    <div style="margin-top:22px;padding:16px;background:#fff7ed;border-radius:10px;border:1px solid #fed7aa;">
+                        <strong style="color:#c2410c;font-size:13px;">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                            Menunggu Pembayaran
+                        </strong>
+                        <p style="font-size:12px;color:#9a3412;margin:6px 0 12px;">
+                            Total tagihan: <b>Rp <?= number_format((float) ($bayar['jumlah'] ?? 0), 0, ',', '.') ?></b>.
+                            Selesaikan pembayaran untuk melanjutkan proses pendaftaran.
+                        </p>
+                        <a href="pembayaran.php?id=<?= e($pendaftaran['id_pendaftaran']) ?>" class="btn btn-gold">
+                            <i class="fa-solid fa-money-bill-transfer"></i> Lakukan Pembayaran
+                        </a>
+                    </div>
+                <?php endif; ?>
+
+                <?php if ($sertifikat): ?>
+                    <div style="margin-top:22px;padding:16px;background:#ecfdf5;border-radius:10px;border:1px solid #a7f3d0;">
+                        <strong style="color:#166534;font-size:13px;">
+                            <i class="fa-solid fa-award"></i> Sertifikat Tersedia
+                        </strong>
+                        <p style="font-size:12px;color:#065f46;margin:6px 0 12px;">
+                            <?php if ($sertifikat['nomor']): ?>Nomor: <b><?= e($sertifikat['nomor']) ?></b><?php endif; ?>
+                            <?php if ($sertifikat['tanggal_terbit']): ?> &middot; Terbit: <?= e(date('d-m-Y', strtotime($sertifikat['tanggal_terbit']))) ?><?php endif; ?>
+                        </p>
+                        <a href="../uploads/sertifikat/<?= e(rawurlencode($sertifikat['file'])) ?>" target="_blank" rel="noopener" download class="btn">
+                            <i class="fa-solid fa-file-arrow-down"></i> Unduh Sertifikat
+                        </a>
+                    </div>
+                <?php endif; ?>
 
 
                 <!-- DETAIL -->

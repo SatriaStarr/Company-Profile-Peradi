@@ -27,6 +27,7 @@ $__active_map = [
     'detail_pendaftaran.php' => 'pendaftaran',
     'peserta.php'            => 'pendaftaran',
     'data_user.php'          => 'user',
+    'laporan.php'            => 'laporan',
     'pengumuman.php'         => 'pengumuman',
     'notifikasi.php'         => 'notifikasi',
     'data_advokat.php'       => 'advokat',
@@ -111,6 +112,9 @@ if (isset($conn) && $conn instanceof mysqli && !empty($_SESSION['id_user'])) {
 
         <li><a href="data_user.php" class="<?= $__active === 'user' ? 'active' : '' ?>">
             <i class="fa-solid fa-user-group"></i> Data User</a></li>
+
+        <li><a href="laporan.php" class="<?= $__active === 'laporan' ? 'active' : '' ?>">
+            <i class="fa-solid fa-chart-pie"></i> Laporan</a></li>
 
         <li><a href="pengumuman.php" class="<?= $__active === 'pengumuman' ? 'active' : '' ?>">
             <i class="fa-solid fa-bullhorn"></i> Pengumuman</a></li>
