@@ -26,7 +26,7 @@ Subfolder: galeri, layanan, pembayaran, peraturan, qris, sertifikasi, sertifikat
 
 - [x] 1. Sentralisasi sidebar admin
 - [x] 2. Rapikan Data User
-- [ ] 3. Fitur Pengumuman
+- [x] 3. Fitur Pengumuman
 - [ ] 4. Fitur Notifikasi
 - [ ] 5. Audit Data Advokat
 - [ ] 6. Audit Detail Pendaftaran
@@ -70,3 +70,8 @@ Subfolder: galeri, layanan, pembayaran, peraturan, qris, sertifikasi, sertifikat
 - Baru `admin/edit_user.php`: edit nama/username/email + (super_admin) role/status + reset password opsional. Validasi: username unik & format, email valid, tidak menurunkan super_admin terakhir, tidak mengubah role/status diri sendiri. CSRF wajib.
 - Fungsi "Verifikasi Admin" lama (approve user pending) kini tercakup oleh tombol Aktifkan + edit status. `verifikasi_admin.php` & `proses_verifikasi.php` tidak dihapus.
 - Uji fungsional: edit tersimpan, guard hapus-diri-sendiri jalan, POST tanpa CSRF -> 419.
+
+### 3. Fitur Pengumuman — SELESAI
+- Admin `admin/pengumuman.php`: tambah / edit / hapus sudah berjalan (prepared statement) — diverifikasi via HTTP (add/edit/hapus OK). Tidak diubah logikanya, hanya sidebar ikut komponen baru.
+- **Baru `user/pengumuman.php`**: daftar + detail pengumuman untuk user login. Hanya `status = 'publikasi'` yang tampil; akses langsung ke id draft dialihkan. Diverifikasi: draft tidak bocor ke user.
+- `user/dashboard.php`: link rusak "Hasil Pengumuman -> hasil_pengumuman.php" (404) diganti "Pengumuman -> pengumuman.php" di sidebar dan quick-menu.

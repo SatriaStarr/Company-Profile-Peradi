@@ -1261,17 +1261,17 @@ body {
         </li>
 
 
-        <!-- HASIL PENGUMUMAN -->
+        <!-- PENGUMUMAN -->
 
         <li>
 
             <a
-                href="hasil_pengumuman.php"
+                href="pengumuman.php"
             >
 
                 <i class="fa-solid fa-bullhorn"></i>
 
-                Hasil Pengumuman
+                Pengumuman
 
             </a>
 
@@ -1852,10 +1852,10 @@ body {
 
 
 
-            <!-- HASIL PENGUMUMAN -->
+            <!-- PENGUMUMAN -->
 
             <a
-                href="hasil_pengumuman.php"
+                href="pengumuman.php"
                 class="quick-item"
             >
 
@@ -1871,11 +1871,11 @@ body {
                 <div class="quick-text">
 
                     <strong>
-                        Hasil Pengumuman
+                        Pengumuman
                     </strong>
 
                     <span>
-                        Lihat hasil dan status kelulusan
+                        Informasi resmi dari DPC PERADI
                     </span>
 
                 </div>
