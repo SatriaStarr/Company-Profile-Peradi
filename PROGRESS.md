@@ -209,3 +209,17 @@ Subfolder: galeri, layanan, pembayaran, peraturan, qris, sertifikasi, sertifikat
 
 ## Status akhir
 **20/20 item checklist SELESAI.** Semua halaman (8 publik + 20 admin + 11 user) dirender via `php -S` tanpa error PHP. Alur end-to-end PKPA & UPA diverifikasi (daftar -> berkas -> bayar manual/gateway -> verifikasi -> hasil -> sertifikat -> notifikasi). Payment gateway Midtrans & Login Google siap-pakai begitu kredensial diisi (`SETUP_MIDTRANS.md`, `SETUP_GOOGLE.md`).
+
+## Perbaikan lanjutan (pemeriksaan menyeluruh ke-2)
+- `admin/proses_login.php` & `admin/proses_register.php`: diubah ke **prepared statement** (dulu `mysqli_real_escape_string`) + CSRF di register admin. (item 9)
+- `admin/layanan_pkpa.php` / `layanan_upa.php` / `layanan_sumpah.php`: pakai `admin_auth` -> ada cek ROLE (dulu hanya `status_login`). (item 9)
+- **Data advokat 336 baris `jenis_kelamin=''`**: `proses_import.php` kini punya opsi **"Perbarui data untuk NIA yang sudah ada"** (checkbox di modal Import). Re-import CSV asli dengan opsi ini akan memperbaiki jenis kelamin + mengisi kolom kosong (COALESCE, tidak menimpa data yang sudah ada dengan nilai kosong). Diuji: skip vs update.
+- `user/dashboard.php`: badge merah jumlah notifikasi belum dibaca di link "Notifikasi" (sidebar + quick-menu). (item 4)
+
+## Pemeriksaan akhir
+- `php -l` seluruh file .php: **0 error**.
+- 46 halaman (8 publik + 27 admin + 11 user) dirender via `php -S`: **semua OK, tanpa error/warning/notice**.
+- E2E UPA penuh diulang: daftar -> berkas -> bayar -> verifikasi -> hasil -> sertifikat -> notifikasi user & admin. **OK, server log bersih**.
+- IDOR: semua query sisi user difilter `id_user`. Cek role: semua halaman admin (kecuali `index.php` yang hanya redirect).
+- SQLi login admin: percobaan `x' OR '1'='1` -> notfound (prepared statement).
+- Data uji dibersihkan; DB kembali ke kondisi awal (5 user, 2 pendaftaran, 3 notifikasi, 336 advokat).
