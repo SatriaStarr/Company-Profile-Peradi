@@ -4,3 +4,5 @@ vendor/
 .env
 config/midtrans_keys.local.php
 user/google_config.local.php
+uploads/advokat/
+!uploads/advokat/.gitkeep

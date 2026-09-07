@@ -28,7 +28,7 @@ Subfolder: galeri, layanan, pembayaran, peraturan, qris, sertifikasi, sertifikat
 - [x] 2. Rapikan Data User
 - [x] 3. Fitur Pengumuman
 - [x] 4. Fitur Notifikasi
-- [ ] 5. Audit Data Advokat
+- [x] 5. Audit Data Advokat
 - [ ] 6. Audit Detail Pendaftaran
 - [ ] 7. Perbaiki path upload/file (404)
 - [ ] 8. Keamanan upload file
@@ -82,3 +82,15 @@ Subfolder: galeri, layanan, pembayaran, peraturan, qris, sertifikasi, sertifikat
 - **Notifikasi ADMIN ditambahkan**: `proses_pendaftaran.php`, `proses_pendaftaran_pkpa.php`, `proses_pendaftaran_upa.php` -> "Pendaftaran baru"; `proses_pembayaran.php` -> "Bukti pembayaran baru". Diuji: broadcast ke 4 akun admin.
 - `user/notifikasi.php` ditulis ulang: snapshot "belum dibaca" sebelum ditandai, highlight item baru, tandai semua dibaca setelah render, hapus per item. (Sebelumnya cuma 1 baris & langsung mark-all-read tanpa indikator.)
 - `admin/notifikasi.php` ditulis ulang: tab "Notifikasi Saya" (default, read/unread berfungsi, mark-read saat dibuka, hapus) + tab "Semua Pengguna" (monitoring + cari). Badge sidebar (item 1) kini bermakna.
+
+### 5. Audit Data Advokat — SELESAI (sekaligus menuntaskan item 7/8/9 utk modul ini)
+- Baru `upload_helper.php` (root): `simpan_upload()` (validasi MIME finfo + whitelist ekstensi + batas ukuran + nama acak `random_bytes` + simpan ke `uploads/<subdir>/` di ROOT), `hapus_upload()`, `url_upload()`. Ini standar upload untuk item 8.
+- Folder baru `uploads/advokat/`.
+- `data_advokat.php` ditulis ulang: pakai `admin_auth` (cek ROLE, sebelumnya tidak), sidebar+topbar konsisten dashboard, **pencarian server-side** (nama/NIA/NIK/kantor/HP) auto-submit, filter status auto-submit, reset ikon, **pagination** (15/hal). Sebelumnya load 352 baris + search JS.
+- `detail_advokat.php` ditulis ulang: `admin_auth` (sebelumnya TANPA cek login sama sekali), sidebar, path file benar (`../uploads/...`, sebelumnya `uploads/...` -> 404), tampil semua kolom termasuk `file_bas` & `masa_berlaku_ktpa`.
+- `tambah_advokat.php` + `edit_advokat.php` + partial `form_advokat.php`: form lengkap sesuai kolom DB nyata, CSRF, sidebar konsisten.
+- `proses_tambah.php` / `proses_edit.php` ditulis ulang: **prepared statement** (sebelumnya string interpolation = SQLi), **cek auth** (sebelumnya TANPA auth = siapa pun bisa POST), CSRF, upload via `simpan_upload` ke `uploads/advokat/`, validasi, cek NIA duplikat (errno 1062), rollback file jika gagal. `jenis_kelamin` disimpan sebagai `L`/`P` sesuai enum.
+- `hapus_advokat.php`: POST + CSRF + auth (sebelumnya GET tanpa role), prepared DELETE, hapus file terkait, **hapus panggilan cURL ke server eksternal `http://80.80.80.135:3000`**.
+- `proses_import.php`: auth + CSRF + validasi file, prepared statement, **perbaikan bug**: `jenis_kelamin` dulu diisi "Laki-laki"/"Perempuan" ke kolom `enum('L','P')` -> tersimpan `''`. Kini map ke `L`/`P`. `foto_profil` dibiarkan NULL (dulu 'default.jpg' padahal file tidak ada).
+- Uji: tambah/edit/hapus/duplikat-NIA/import CSV/pencarian/pagination + guard CSRF (419) semua OK.
+- **CATATAN DATA LAMA**: 336 baris advokat existing punya `jenis_kelamin=''` akibat bug import lama. Perlu re-import CSV (importer sekarang skip NIA duplikat) atau perbaikan manual — tidak bisa saya tebak datanya.

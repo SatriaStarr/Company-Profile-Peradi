@@ -1,84 +1,108 @@
 <?php
-include 'koneksi.php';
+require_once __DIR__ . '/partials/admin_auth.php';
+require_once __DIR__ . '/../upload_helper.php';
+require_once __DIR__ . '/partials/advokat_lib.php';
 
-// 1. Ambil ID & Data Teks
-$id               = $_POST['id'];
-$nia              = $_POST['nia'];
-$nama_lengkap     = $_POST['nama_lengkap'];
-$nik              = $_POST['nik'];
-$tempat_lahir     = $_POST['tempat_lahir'];
-$tanggal_lahir    = $_POST['tanggal_lahir'];
-$jenis_kelamin    = $_POST['jenis_kelamin'];
-$agama            = $_POST['agama'];
-$alamat_domisili  = $_POST['alamat_domisili'];
-$nama_kantor      = $_POST['nama_kantor_hukum'];
-$alamat_kantor    = $_POST['alamat_kantor'];
-$no_hp            = $_POST['no_hp'];
-$email            = $_POST['email'];
-$status           = $_POST['status_keanggotaan'];
-$univ             = $_POST['universitas_asal'];
-$nomor_bas        = $_POST['nomor_bas'];
-$tgl_sumpah       = $_POST['tanggal_sumpah_pt'];
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('Location: data_advokat.php');
+    exit;
+}
+csrf_check();
 
-// Ambil Nama File Lama (Dikirim via input hidden)
-$foto_lama        = $_POST['foto_lama'];
-$ktpa_lama        = $_POST['ktpa_lama'];
-
-// --- FUNGSI UPLOAD (Sama kayak tambah data) ---
-function uploadFileBaru($nama_input) {
-    $nama_file   = $_FILES[$nama_input]['name'];
-    $tmp_name    = $_FILES[$nama_input]['tmp_name'];
-    $ekstensi    = explode('.', $nama_file);
-    $ekstensi    = strtolower(end($ekstensi));
-    $nama_baru   = uniqid() . '.' . $ekstensi;
-    
-    move_uploaded_file($tmp_name, 'uploads/' . $nama_baru);
-    return $nama_baru;
+$id = (int) ($_POST['id'] ?? 0);
+if ($id <= 0) {
+    header('Location: data_advokat.php?pesan=gagal');
+    exit;
 }
 
-// 2. LOGIKA GANTI FOTO PROFIL
-// Cek apakah user upload foto baru? (Error 4 artinya tidak ada file)
-if ($_FILES['foto_profil']['error'] === 4) {
-    // Jika tidak upload, pakai nama file lama
-    $foto_final = $foto_lama;
-} else {
-    // Jika upload baru, proses upload & pakai nama file baru
-    $foto_final = uploadFileBaru('foto_profil');
+/* data lama (untuk file yang tidak diganti) */
+$old = null;
+if ($st = mysqli_prepare($conn, 'SELECT foto_profil, file_ktpa, file_bas FROM data_advokat WHERE id_advokat = ? LIMIT 1')) {
+    mysqli_stmt_bind_param($st, 'i', $id);
+    mysqli_stmt_execute($st);
+    $old = mysqli_fetch_assoc(mysqli_stmt_get_result($st));
+    mysqli_stmt_close($st);
+}
+if (!$old) {
+    header('Location: data_advokat.php?pesan=gagal');
+    exit;
 }
 
-// 3. LOGIKA GANTI FILE KTPA
-if ($_FILES['file_ktpa']['error'] === 4) {
-    $ktpa_final = $ktpa_lama;
-} else {
-    $ktpa_final = uploadFileBaru('file_ktpa');
+[$f, $errors] = advokat_input($conn);
+
+if ($errors) {
+    $_SESSION['adv_errors'] = $errors;
+    $_SESSION['adv_old']    = $f;
+    header('Location: edit_advokat.php?id=' . $id);
+    exit;
 }
 
-// 4. UPDATE DATABASE
-$query = "UPDATE data_advokat SET
-            nia = '$nia',
-            nama_lengkap = '$nama_lengkap',
-            nik = '$nik',
-            tempat_lahir = '$tempat_lahir',
-            tanggal_lahir = '$tanggal_lahir',
-            jenis_kelamin = '$jenis_kelamin',
-            agama = '$agama',
-            alamat_domisili = '$alamat_domisili',
-            nama_kantor_hukum = '$nama_kantor',
-            alamat_kantor = '$alamat_kantor',
-            no_hp = '$no_hp',
-            email = '$email',
-            status_keanggotaan = '$status',
-            universitas_asal = '$univ',
-            nomor_bas = '$nomor_bas',
-            tanggal_sumpah_pt = '$tgl_sumpah',
-            foto_profil = '$foto_final',
-            file_ktpa = '$ktpa_final'
-          WHERE id_advokat = '$id'";
+/* file: pakai baru bila diunggah, jika tidak pertahankan lama */
+$foto = $old['foto_profil'];
+$ktpa = $old['file_ktpa'];
+$bas  = $old['file_bas'];
+$baru = [];
 
-if (mysqli_query($conn, $query)) {
-    // Sukses, kembali ke data advokat
-    header("Location: data_advokat.php?pesan=sukses_edit");
-} else {
-    echo "Gagal mengupdate data: " . mysqli_error($conn);
+try {
+    if (($_FILES['foto_profil']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+        $foto = simpan_upload($_FILES['foto_profil'], 'advokat', ['image'], 3145728, false);
+        $baru[] = [$foto, $old['foto_profil']];
+    }
+    if (($_FILES['file_ktpa']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+        $ktpa = simpan_upload($_FILES['file_ktpa'], 'advokat', ['image', 'pdf'], 3145728, false);
+        $baru[] = [$ktpa, $old['file_ktpa']];
+    }
+    if (($_FILES['file_bas']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+        $bas = simpan_upload($_FILES['file_bas'], 'advokat', ['image', 'pdf'], 3145728, false);
+        $baru[] = [$bas, $old['file_bas']];
+    }
+} catch (RuntimeException $e) {
+    foreach ($baru as $b) {
+        hapus_upload($b[0]);
+    }
+    $_SESSION['adv_errors'] = [$e->getMessage()];
+    $_SESSION['adv_old']    = $f;
+    header('Location: edit_advokat.php?id=' . $id);
+    exit;
 }
-?>
+
+$sql = 'UPDATE data_advokat SET
+        nia=?, nama_lengkap=?, nik=?, tempat_lahir=?, tanggal_lahir=?, jenis_kelamin=?, agama=?,
+        alamat_domisili=?, nama_kantor_hukum=?, alamat_kantor=?, no_hp=?, email=?,
+        universitas_asal=?, tanggal_sumpah_pt=?, nomor_bas=?, masa_berlaku_ktpa=?,
+        status_keanggotaan=?, foto_profil=?, file_ktpa=?, file_bas=?
+        WHERE id_advokat=? LIMIT 1';
+$st = mysqli_prepare($conn, $sql);
+mysqli_stmt_bind_param(
+    $st,
+    str_repeat('s', 20) . 'i',
+    $f['nia'], $f['nama_lengkap'], $f['nik'], $f['tempat_lahir'], $f['tanggal_lahir'],
+    $f['jenis_kelamin'], $f['agama'], $f['alamat_domisili'], $f['nama_kantor_hukum'],
+    $f['alamat_kantor'], $f['no_hp'], $f['email'], $f['universitas_asal'],
+    $f['tanggal_sumpah_pt'], $f['nomor_bas'], $f['masa_berlaku_ktpa'],
+    $f['status_keanggotaan'], $foto, $ktpa, $bas, $id
+);
+
+if (mysqli_stmt_execute($st)) {
+    mysqli_stmt_close($st);
+    // hapus file lama yang benar-benar diganti
+    foreach ($baru as $b) {
+        if ($b[1] && $b[1] !== $b[0] && $b[1] !== 'default.jpg') {
+            hapus_upload($b[1]);
+        }
+    }
+    header('Location: data_advokat.php?pesan=sukses_edit');
+    exit;
+}
+
+$err = mysqli_errno($conn) === 1062
+    ? 'NIA "' . $f['nia'] . '" sudah dipakai advokat lain.'
+    : 'Gagal memperbarui: ' . mysqli_error($conn);
+mysqli_stmt_close($st);
+foreach ($baru as $b) {
+    hapus_upload($b[0]);
+}
+$_SESSION['adv_errors'] = [$err];
+$_SESSION['adv_old']    = $f;
+header('Location: edit_advokat.php?id=' . $id);
+exit;

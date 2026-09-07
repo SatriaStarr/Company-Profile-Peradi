@@ -1,135 +1,95 @@
 <?php
-// Hubungkan ke database
-include 'koneksi.php';
+require_once __DIR__ . '/partials/admin_auth.php';
 
-if (isset($_POST['import'])) {
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['import'])) {
+    header('Location: data_advokat.php');
+    exit;
+}
+csrf_check();
 
-    $fileName = $_FILES['file_csv']['tmp_name'];
+if (($_FILES['file_csv']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK
+    || !is_uploaded_file($_FILES['file_csv']['tmp_name'])) {
+    header('Location: data_advokat.php?pesan=gagal');
+    exit;
+}
+if ($_FILES['file_csv']['size'] <= 0 || $_FILES['file_csv']['size'] > 5 * 1024 * 1024) {
+    header('Location: data_advokat.php?pesan=gagal');
+    exit;
+}
 
-    if ($_FILES['file_csv']['size'] > 0) {
+$ext = strtolower(pathinfo($_FILES['file_csv']['name'], PATHINFO_EXTENSION));
+if ($ext !== 'csv') {
+    header('Location: data_advokat.php?pesan=gagal');
+    exit;
+}
 
-        $file = fopen($fileName, "r");
+$fp = fopen($_FILES['file_csv']['tmp_name'], 'r');
+if (!$fp) {
+    header('Location: data_advokat.php?pesan=gagal');
+    exit;
+}
 
-        // Lewati Baris Header (Judul Kolom)
-        fgetcsv($file, 10000, ";");
+fgetcsv($fp, 10000, ';'); // lewati header
 
-        $berhasil = 0;
-        $gagal = 0;
+$berhasil = 0;
+$gagal    = 0;
 
-        while (($column = fgetcsv($file, 10000, ";")) !== FALSE) {
+$cek = mysqli_prepare($conn, 'SELECT 1 FROM data_advokat WHERE nia = ? LIMIT 1');
+$ins = mysqli_prepare(
+    $conn,
+    'INSERT INTO data_advokat
+     (nia, nama_lengkap, jenis_kelamin, tempat_lahir, tanggal_lahir, agama, no_hp,
+      nama_kantor_hukum, alamat_kantor, nik, alamat_domisili, status_keanggotaan)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?, "aktif")'
+);
 
-            // ===============================================================
-            // MAPPING URUT SESUAI KOLOM EXCEL ANDA (Kiri ke Kanan)
-            // ===============================================================
+while (($c = fgetcsv($fp, 10000, ';')) !== false) {
 
-            // Kolom A [0] : No. (Tidak dipakai karena Auto Number)
+    $g = fn(int $i) => isset($c[$i]) ? trim($c[$i]) : '';
 
-            // Kolom B [1] : NIA
-            $nia = isset($column[1]) ? mysqli_real_escape_string($conn, $column[1]) : '';
+    $nia = $g(1);
+    if ($nia === '') {
+        $gagal++;
+        continue;
+    }
 
-            // Kolom C [2] : NAMA LENGKAP dan GELAR
-            $nama_lengkap = isset($column[2]) ? mysqli_real_escape_string($conn, $column[2]) : '';
+    // cek duplikat
+    mysqli_stmt_bind_param($cek, 's', $nia);
+    mysqli_stmt_execute($cek);
+    if (mysqli_fetch_row(mysqli_stmt_get_result($cek))) {
+        $gagal++;
+        continue;
+    }
 
-            // Kolom D [3] : Jenis Kelamin (L/P) -> Kita ubah jadi text panjang
-            $jk_kode = isset($column[3]) ? $column[3] : '';
-            $jenis_kelamin = ($jk_kode == 'L') ? 'Laki-laki' : 'Perempuan';
+    $nama_lengkap  = $g(2);
+    $jk_raw        = strtoupper($g(3));
+    $jenis_kelamin = in_array($jk_raw, ['L', 'P'], true)
+        ? $jk_raw
+        : (str_starts_with($jk_raw, 'L') ? 'L' : (str_starts_with($jk_raw, 'P') ? 'P' : null));
+    $tempat_lahir  = $g(4);
+    $tanggal_lahir = preg_match('/^\d{4}-\d{2}-\d{2}$/', $g(5)) ? $g(5) : null;
+    $agama         = $g(6);
+    $no_hp         = $g(7);
+    $nama_kantor   = $g(8);
+    $alamat_kantor = $g(9);
+    $nik           = $g(12);
+    $alamat_dom    = $g(13);
 
-            // Kolom E [4] : Tempat Lahir
-            $tempat_lahir = isset($column[4]) ? mysqli_real_escape_string($conn, $column[4]) : '';
+    mysqli_stmt_bind_param(
+        $ins,
+        'sssssssssss',
+        $nia, $nama_lengkap, $jenis_kelamin, $tempat_lahir, $tanggal_lahir, $agama,
+        $no_hp, $nama_kantor, $alamat_kantor, $nik, $alamat_dom
+    );
 
-            // Kolom F [5] : Tanggal Lahir (Format Excel: YYYY-MM-DD)
-            $tanggal_lahir = isset($column[5]) ? $column[5] : '1970-01-01';
-
-            // Kolom G [6] : Agama
-            $agama = isset($column[6]) ? mysqli_real_escape_string($conn, $column[6]) : '';
-
-            // Kolom H [7] : Nomor Handphone
-            $no_hp = isset($column[7]) ? mysqli_real_escape_string($conn, $column[7]) : '';
-
-            // Kolom I [8] : Nama Kantor
-            $nama_kantor = isset($column[8]) ? mysqli_real_escape_string($conn, $column[8]) : '';
-
-            // Kolom J [9] : Alamat Kantor
-            $alamat_kantor = isset($column[9]) ? mysqli_real_escape_string($conn, $column[9]) : '';
-
-            // Kolom K [10] : Kota Kantor (Dilewati - tidak ada di database Anda)
-            // $kota_kantor = $column[10]; 
-
-            // Kolom L [11] : Nomor Telepon Kantor (Dilewati)
-            // $telp_kantor = $column[11];
-
-            // Kolom M [12] : Nomor Identitas Kependudukan (NIK)
-            $nik = isset($column[12]) ? mysqli_real_escape_string($conn, $column[12]) : '';
-
-            // Kolom N [13] : Alamat Rumah (Sesuai KTP)
-            $alamat_domisili = isset($column[13]) ? mysqli_real_escape_string($conn, $column[13]) : '';
-
-            // Kolom O s/d Z [14-25] : (Dilewati - karena database belum ada kolomnya)
-            // Jika nanti mau dipakai, tinggal tambahkan di sini urut.
-
-
-            // ===============================================================
-            // DATA TAMBAHAN (DEFAULT)
-            // ===============================================================
-            $status = 'aktif';
-            $foto   = 'default.jpg';
-
-            // ===============================================================
-            // CEK DUPLIKAT NIA (WAJIB)
-            // ===============================================================
-            $cek_nia = mysqli_query($conn, "SELECT nia FROM data_advokat WHERE nia='$nia'");
-
-            if (mysqli_num_rows($cek_nia) > 0) {
-                $gagal++;
-                continue; // Lewati data ini
-            }
-
-
-
-            // ===============================================================
-            // MASUKKAN KE DATABASE
-            // ===============================================================
-            $query = "INSERT INTO data_advokat (
-                        nia, 
-                        nama_lengkap, 
-                        jenis_kelamin, 
-                        tempat_lahir, 
-                        tanggal_lahir, 
-                        agama, 
-                        no_hp, 
-                        nama_kantor_hukum, 
-                        alamat_kantor, 
-                        nik, 
-                        alamat_domisili, 
-                        status_keanggotaan, 
-                        foto_profil, 
-                        created_at
-                      ) VALUES (
-                        '$nia', 
-                        '$nama_lengkap', 
-                        '$jenis_kelamin', 
-                        '$tempat_lahir', 
-                        '$tanggal_lahir', 
-                        '$agama', 
-                        '$no_hp', 
-                        '$nama_kantor', 
-                        '$alamat_kantor', 
-                        '$nik', 
-                        '$alamat_domisili', 
-                        '$status', 
-                        '$foto', 
-                        NOW()
-                      )";
-
-            if (mysqli_query($conn, $query)) {
-                $berhasil++;
-            } else {
-                $gagal++;
-            }
-        }
-
-        fclose($file);
-        header("Location: data_advokat.php?pesan=import_selesai&sukses=$berhasil&gagal=$gagal");
-        exit;
+    if (mysqli_stmt_execute($ins)) {
+        $berhasil++;
+    } else {
+        $gagal++;
     }
 }
+
+fclose($fp);
+
+header('Location: data_advokat.php?pesan=import_selesai&sukses=' . $berhasil . '&gagal=' . $gagal);
+exit;

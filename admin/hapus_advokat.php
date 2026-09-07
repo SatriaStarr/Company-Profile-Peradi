@@ -1,64 +1,47 @@
 <?php
-session_start();
-include 'koneksi.php';
+require_once __DIR__ . '/partials/admin_auth.php';
+require_once __DIR__ . '/../upload_helper.php';
 
-// 1. Cek Login (Keamanan)
-if (!isset($_SESSION['status_login'])) {
-    header("Location: index.php");
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('Location: data_advokat.php');
+    exit;
+}
+csrf_check();
+
+$id = (int) ($_POST['id'] ?? 0);
+if ($id <= 0) {
+    header('Location: data_advokat.php?pesan=gagal');
     exit;
 }
 
-// 2. Cek apakah ada ID di URL?
-if (isset($_GET['id'])) {
-    $id = $_GET['id'];
-
-    // --- LANGKAH PENTING: AMBIL DATA DULU SEBELUM DIHAPUS ---
-    // Kita butuh nama filenya untuk dihapus dari folder
-    $query_cek = mysqli_query($conn, "SELECT * FROM data_advokat WHERE id_advokat = '$id'");
-    $data = mysqli_fetch_assoc($query_cek);
-
-    // Jika data ditemukan
-    if ($data) {
-        
-        // A. HAPUS FOTO PROFIL (Jika ada file & filenya nyata)
-        if (!empty($data['foto_profil'])) {
-            $path_foto = 'uploads/' . $data['foto_profil'];
-            if (file_exists($path_foto)) {
-                unlink($path_foto); // Perintah sakti untuk menghapus file
-            }
-        }
-
-        // B. HAPUS FILE KTPA
-        if (!empty($data['file_ktpa'])) {
-            $path_ktpa = 'uploads/' . $data['file_ktpa'];
-            if (file_exists($path_ktpa)) {
-                unlink($path_ktpa);
-            }
-        }
-
-        // C. BARU HAPUS DATA DARI DATABASE
-        $query_hapus = mysqli_query($conn, "DELETE FROM data_advokat WHERE id_advokat = '$id'");
-
-        if ($query_hapus) {
-            // 🔔 KIRIM SINYAL KE REALTIME SERVER (Node.js)
-            $ch = curl_init("http://80.80.80.135:3000/notify-update");
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_exec($ch);
-            curl_close($ch);
-
-            // Kembali ke tabel
-            header("Location: data_advokat.php?pesan=sukses_hapus");
-        } else {
-            echo "Gagal menghapus database: " . mysqli_error($conn);
-        }
-
-    } else {
-        echo "Data tidak ditemukan.";
-    }
-
-} else {
-    // Jika orang iseng buka file ini tanpa ID
-    header("Location: data_advokat.php");
+/* ambil file untuk dibersihkan */
+$data = null;
+if ($st = mysqli_prepare($conn, 'SELECT foto_profil, file_ktpa, file_bas FROM data_advokat WHERE id_advokat = ? LIMIT 1')) {
+    mysqli_stmt_bind_param($st, 'i', $id);
+    mysqli_stmt_execute($st);
+    $data = mysqli_fetch_assoc(mysqli_stmt_get_result($st));
+    mysqli_stmt_close($st);
 }
-?>
+if (!$data) {
+    header('Location: data_advokat.php?pesan=gagal');
+    exit;
+}
+
+$st = mysqli_prepare($conn, 'DELETE FROM data_advokat WHERE id_advokat = ? LIMIT 1');
+mysqli_stmt_bind_param($st, 'i', $id);
+$ok = mysqli_stmt_execute($st);
+mysqli_stmt_close($st);
+
+if ($ok) {
+    foreach (['foto_profil', 'file_ktpa', 'file_bas'] as $k) {
+        $v = $data[$k] ?? '';
+        if ($v && $v !== 'default.jpg' && str_starts_with(str_replace('\\', '/', $v), 'uploads/')) {
+            hapus_upload($v);
+        }
+    }
+    header('Location: data_advokat.php?pesan=sukses_hapus');
+    exit;
+}
+
+header('Location: data_advokat.php?pesan=gagal');
+exit;

@@ -1,82 +1,78 @@
 <?php
-include 'koneksi.php';
+require_once __DIR__ . '/partials/admin_auth.php';
+require_once __DIR__ . '/../upload_helper.php';
+require_once __DIR__ . '/partials/advokat_lib.php';
 
-// --- FUNGSI UPLOAD FILE ---
-// Agar kodingan rapi, kita buat fungsi khusus upload
-function uploadFile($nama_input) {
-    $nama_file   = $_FILES[$nama_input]['name'];
-    $ukuran_file = $_FILES[$nama_input]['size'];
-    $error       = $_FILES[$nama_input]['error'];
-    $tmp_name    = $_FILES[$nama_input]['tmp_name'];
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('Location: tambah_advokat.php');
+    exit;
+}
+csrf_check();
 
-    // Cek apakah ada file yang diupload
-    if ($error === 4) {
-        return null; // Tidak ada file
-    }
+/* ---------- kumpulkan & validasi ---------- */
+[$f, $errors] = advokat_input($conn);
 
-    // Generate nama file baru yang unik (agar tidak bentrok)
-    // Contoh: 170923221_foto.jpg
-    $ekstensi_valid = ['jpg', 'jpeg', 'png', 'pdf'];
-    $ekstensi_file  = explode('.', $nama_file);
-    $ekstensi_file  = strtolower(end($ekstensi_file));
-
-    // Cek ekstensi (sederhana)
-    if (!in_array($ekstensi_file, $ekstensi_valid)) {
-        return false;
-    }
-
-    // Nama baru
-    $nama_file_baru = uniqid() . '.' . $ekstensi_file;
-    
-    // Pindahkan file ke folder 'uploads'
-    move_uploaded_file($tmp_name, 'uploads/' . $nama_file_baru);
-
-    return $nama_file_baru;
+if ($errors) {
+    $_SESSION['adv_errors'] = $errors;
+    $_SESSION['adv_old']    = $f;
+    header('Location: tambah_advokat.php');
+    exit;
 }
 
-// --- AMBIL DATA TEXT DARI FORM ---
-$nia              = $_POST['nia'];
-$nama_lengkap     = $_POST['nama_lengkap'];
-$nik              = $_POST['nik'];
-$tempat_lahir     = $_POST['tempat_lahir'];
-$tanggal_lahir    = $_POST['tanggal_lahir'];
-$jenis_kelamin    = $_POST['jenis_kelamin'];
-$agama            = $_POST['agama'];
-$alamat_domisili  = $_POST['alamat_domisili'];
-$nama_kantor      = $_POST['nama_kantor_hukum'];
-$alamat_kantor    = $_POST['alamat_kantor'];
-$no_hp            = $_POST['no_hp'];
-$email            = $_POST['email'];
-$status           = $_POST['status_keanggotaan'];
-$univ             = $_POST['universitas_asal'];
-$nomor_bas        = $_POST['nomor_bas'];
-$tgl_sumpah       = $_POST['tanggal_sumpah_pt'];
-
-// --- PROSES UPLOAD FILE ---
-$foto_profil = uploadFile('foto_profil');
-$file_ktpa   = uploadFile('file_ktpa');
-// Kalau gagal upload (format salah), set null saja biar tidak error
-if($foto_profil === false) $foto_profil = null; 
-if($file_ktpa === false) $file_ktpa = null;
-
-// --- SIMPAN KE DATABASE ---
-$query = "INSERT INTO data_advokat (
-            nia, nama_lengkap, nik, tempat_lahir, tanggal_lahir, jenis_kelamin, 
-            agama, alamat_domisili, nama_kantor_hukum, alamat_kantor, no_hp, 
-            email, status_keanggotaan, universitas_asal, nomor_bas, 
-            tanggal_sumpah_pt, foto_profil, file_ktpa
-          ) VALUES (
-            '$nia', '$nama_lengkap', '$nik', '$tempat_lahir', '$tanggal_lahir', '$jenis_kelamin',
-            '$agama', '$alamat_domisili', '$nama_kantor', '$alamat_kantor', '$no_hp',
-            '$email', '$status', '$univ', '$nomor_bas',
-            '$tgl_sumpah', '$foto_profil', '$file_ktpa'
-          )";
-
-if (mysqli_query($conn, $query)) {
-    // Berhasil
-    header("Location: data_advokat.php?pesan=sukses");
-} else {
-    // Gagal (Biasanya karena NIA kembar atau error SQL)
-    echo "Gagal: " . mysqli_error($conn);
+/* ---------- upload file (opsional) ---------- */
+$foto = $ktpa = $bas = null;
+try {
+    if (($_FILES['foto_profil']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+        $foto = simpan_upload($_FILES['foto_profil'], 'advokat', ['image'], 3145728, false);
+    }
+    if (($_FILES['file_ktpa']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+        $ktpa = simpan_upload($_FILES['file_ktpa'], 'advokat', ['image', 'pdf'], 3145728, false);
+    }
+    if (($_FILES['file_bas']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+        $bas = simpan_upload($_FILES['file_bas'], 'advokat', ['image', 'pdf'], 3145728, false);
+    }
+} catch (RuntimeException $e) {
+    hapus_upload($foto);
+    hapus_upload($ktpa);
+    hapus_upload($bas);
+    $_SESSION['adv_errors'] = [$e->getMessage()];
+    $_SESSION['adv_old']    = $f;
+    header('Location: tambah_advokat.php');
+    exit;
 }
-?>
+
+/* ---------- simpan ---------- */
+$sql = 'INSERT INTO data_advokat
+        (nia, nama_lengkap, nik, tempat_lahir, tanggal_lahir, jenis_kelamin, agama,
+         alamat_domisili, nama_kantor_hukum, alamat_kantor, no_hp, email,
+         universitas_asal, tanggal_sumpah_pt, nomor_bas, masa_berlaku_ktpa,
+         status_keanggotaan, foto_profil, file_ktpa, file_bas)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)';
+$st = mysqli_prepare($conn, $sql);
+mysqli_stmt_bind_param(
+    $st,
+    str_repeat('s', 20),
+    $f['nia'], $f['nama_lengkap'], $f['nik'], $f['tempat_lahir'], $f['tanggal_lahir'],
+    $f['jenis_kelamin'], $f['agama'], $f['alamat_domisili'], $f['nama_kantor_hukum'],
+    $f['alamat_kantor'], $f['no_hp'], $f['email'], $f['universitas_asal'],
+    $f['tanggal_sumpah_pt'], $f['nomor_bas'], $f['masa_berlaku_ktpa'],
+    $f['status_keanggotaan'], $foto, $ktpa, $bas
+);
+
+if (mysqli_stmt_execute($st)) {
+    mysqli_stmt_close($st);
+    header('Location: data_advokat.php?pesan=sukses');
+    exit;
+}
+
+$err = mysqli_errno($conn) === 1062
+    ? 'NIA "' . $f['nia'] . '" sudah terdaftar.'
+    : 'Gagal menyimpan: ' . mysqli_error($conn);
+mysqli_stmt_close($st);
+hapus_upload($foto);
+hapus_upload($ktpa);
+hapus_upload($bas);
+$_SESSION['adv_errors'] = [$err];
+$_SESSION['adv_old']    = $f;
+header('Location: tambah_advokat.php');
+exit;
