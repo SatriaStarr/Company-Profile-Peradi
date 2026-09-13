@@ -254,3 +254,17 @@ Peninjauan menyeluruh terhadap sistem yang berjalan, lalu menambah fitur yang ma
 - Data contoh untuk BAB IV Laporan TA (4 peserta `*.example.com` di berbagai status + 3 pengumuman + berkas placeholder di `uploads/`) dimasukkan agar screenshot lengkap.
 - **`database/hapus_data_demo.sql`** — hapus seluruh data demo tersebut untuk mengembalikan DB ke kondisi bersih.
 - 22 screenshot sistem (`laporan/gambar/bab4_*.png`) untuk BAB IV. `laporan/` gitignored.
+
+---
+
+## Kredensial Midtrans Sandbox terisi (2026-09-14)
+
+`config/midtrans_keys.local.php` diisi dengan kredensial sandbox asli milik user (Server Key, Client Key, Merchant ID M170012795). File tetap gitignored, tidak masuk repo.
+
+**Verifikasi dilakukan:**
+- Format key tidak berawalan `SB-` (mirip format Production) → dites langsung: `api.sandbox.midtrans.com` merespons **HTTP 200** (auth valid), `api.midtrans.com` (Production) merespons **HTTP 401 Unknown Merchant** → dipastikan key ini terdaftar di environment **Sandbox**, aman dipakai dengan `is_production => false`.
+- `midtrans_aktif()` → `true`.
+- `midtrans_create_transaction()` dipanggil langsung dari kode aplikasi (order uji `TEST-VERIF-*`, Rp10.000) → berhasil dapat `token` + `redirect_url` Snap sandbox yang valid.
+- Tombol "Bayar Online" di `user/pembayaran.php` sekarang otomatis tampil (sebelumnya tersembunyi saat kredensial kosong).
+
+**Status akhir checklist:** 20/20 item + seluruh fitur tambahan review pembimbing **SELESAI, termasuk payment gateway Midtrans yang kini live di sandbox.** Item 13-18 (PROGRESS lama, ditulis sbg "mode: config placeholder") kini bisa diuji end-to-end sungguhan (kartu uji / VA sandbox) — lihat `SETUP_MIDTRANS.md` §5. Webhook (`midtrans_notify.php`) masih butuh URL publik (ngrok atau domain) supaya notifikasi otomatis dari Midtrans bisa masuk; tanpa itu, sinkronisasi status tetap bisa lewat tombol "Cek status pembayaran" di `user/midtrans_status.php`.
