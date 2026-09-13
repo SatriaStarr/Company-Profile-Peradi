@@ -268,3 +268,12 @@ Peninjauan menyeluruh terhadap sistem yang berjalan, lalu menambah fitur yang ma
 - Tombol "Bayar Online" di `user/pembayaran.php` sekarang otomatis tampil (sebelumnya tersembunyi saat kredensial kosong).
 
 **Status akhir checklist:** 20/20 item + seluruh fitur tambahan review pembimbing **SELESAI, termasuk payment gateway Midtrans yang kini live di sandbox.** Item 13-18 (PROGRESS lama, ditulis sbg "mode: config placeholder") kini bisa diuji end-to-end sungguhan (kartu uji / VA sandbox) — lihat `SETUP_MIDTRANS.md` §5. Webhook (`midtrans_notify.php`) masih butuh URL publik (ngrok atau domain) supaya notifikasi otomatis dari Midtrans bisa masuk; tanpa itu, sinkronisasi status tetap bisa lewat tombol "Cek status pembayaran" di `user/midtrans_status.php`.
+
+---
+
+## Bug ditemukan lewat pengujian otomatis (2026-09-14)
+
+Saat menyiapkan bukti "Pengujian Otomatis sebagai Pendukung" untuk Laporan TA (skrip curl thd sistem yang berjalan, 16 skenario lintas 5 modul), ketemu 1 bug nyata:
+
+- **`admin/partials/csrf.php` — `csrf_check()` memakai `http_response_code(419)`.** 419 bukan kode HTTP resmi (konvensi Laravel). Di stack Apache+PHP proyek ini, status itu dibungkus ulang jadi **HTTP 500 Internal Server Error** di sisi client — isi pesan penolakannya sendiri sudah benar ("Sesi tidak valid atau kedaluwarsa..."), tapi kode statusnya menyesatkan (klien mengira server error, padahal ini penolakan CSRF yang sah). **Diperbaiki ke `http_response_code(403)`** (Forbidden, kode standar & didukung universal). Cuma 1 titik pemakaian di seluruh kodebase → otomatis berlaku ke semua endpoint admin yang pakai `csrf_check()`. Tabel 4.8 di Laporan TA (baris "submit formulir POST tanpa token CSRF") ikut diperbarui dari "HTTP 419" jadi "HTTP 403".
+- Setelah fix: 16/16 skenario otomatis PASS. Skrip pengujian: `laporan/bukti_pengujian_otomatis/pengujian_otomatis.sh`, hasil mentah: `laporan/bukti_pengujian_otomatis/hasil_pengujian_otomatis.txt`, gambar bukti: `laporan/gambar/bab4_23_bukti_pengujian_otomatis.png` (disisipkan ke Laporan TA sbg Gambar 4.23, subbab baru 4.5.3).
