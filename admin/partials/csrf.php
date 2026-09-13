@@ -36,7 +36,12 @@ if (!function_exists('csrf_check')) {
         }
         $sent = $_POST['csrf_token'] ?? '';
         if (!is_string($sent) || !hash_equals($_SESSION['csrf_token'] ?? '', $sent)) {
-            http_response_code(419);
+            // 419 (konvensi Laravel) bukan kode HTTP resmi -- pada beberapa stack
+            // Apache+PHP status ini berakhir dibungkus ulang jadi 500 Internal
+            // Server Error di sisi client, padahal ini kesalahan client (token
+            // tidak valid/kedaluwarsa), bukan error server. 403 Forbidden adalah
+            // kode standar yang tepat & didukung universal.
+            http_response_code(403);
             die('Sesi tidak valid atau kedaluwarsa. Silakan muat ulang halaman dan coba lagi.');
         }
     }
